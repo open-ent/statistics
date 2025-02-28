@@ -1,6 +1,7 @@
 package net.atos.entng.statistics.services;
 
 import fr.wseduc.mongodb.MongoDb;
+import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.DeliveryOptions;
@@ -8,7 +9,7 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import org.entcore.common.elasticsearch.BulkRequest;
+import org.entcore.common.elasticsearch.BulkRequestOld;
 import org.entcore.common.elasticsearch.ElasticSearch;
 
 public class ElasticSearchEventsSync implements Handler<Long> {
@@ -41,7 +42,7 @@ public class ElasticSearchEventsSync implements Handler<Long> {
 			if ("ok".equals(res.body().getString("status")) &&
 					results != null && (resultsSize = results.size()) > 0) {
 				final JsonArray eventsIds = new JsonArray();
-				BulkRequest bulkRequest = es.bulk(EVENTS, ar -> {
+				Future<BulkRequestOld> bulkRequestFuture = es.bulk(EVENTS, ar -> {
 					if (ar.succeeded()) {
 						JsonArray items = ar.result().getJsonArray("items");
 						if (items.size() != resultsSize) {
@@ -84,12 +85,14 @@ public class ElasticSearchEventsSync implements Handler<Long> {
 						log.error("Error sending events to elasticsearch", ar.cause());
 					}
 				});
-				for (Object o : results) {
-					JsonObject j = (JsonObject) o;
-					eventsIds.add(j.getString("_id"));
-					bulkRequest.index(j, null);
-				}
-				bulkRequest.end();
+				bulkRequestFuture.onSuccess(bulkRequest -> {
+					for (Object o : results) {
+						JsonObject j = (JsonObject) o;
+						eventsIds.add(j.getString("_id"));
+						bulkRequest.index(j, null);
+					}
+					bulkRequest.end();
+				});
 			} else if (!"ok".equals(res.body().getString("status"))){
 				log.error("Error getting events in mongodb : " + res.body().getString("message"));
 			} else {

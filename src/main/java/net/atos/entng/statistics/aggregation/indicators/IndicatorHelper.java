@@ -32,6 +32,7 @@ import io.vertx.core.logging.LoggerFactory;
 import net.atos.entng.statistics.DateUtils;
 
 import org.entcore.common.aggregation.AggregationTools;
+import org.entcore.common.aggregation.filters.IndicatorFilter;
 import org.entcore.common.aggregation.filters.mongo.DateFilter;
 import org.entcore.common.aggregation.filters.mongo.IndicatorFilterMongoImpl;
 import org.entcore.common.aggregation.processing.AggregationProcessing;
@@ -45,7 +46,7 @@ public class IndicatorHelper {
 			throw new InvalidParameterException("Parameter aggProcessing is null");
 		}
 
-		Collection<IndicatorFilterMongoImpl> filters = new ArrayList<>();
+		Collection<IndicatorFilter> filters = new ArrayList<>();
 
 		// DateFilter : keep events of yesterday if parameters "from" and "to" are not supplied
 		Calendar cal = Calendar.getInstance();

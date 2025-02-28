@@ -84,7 +84,7 @@ public class StatisticsController extends BaseController {
     public StatisticsController(Vertx vertx, JsonArray pAccessModules, List<String> customIndicators, JsonArray mobileClientIds) {
         this.vertx = vertx;
         structureService = new StructureServiceNeo4jImpl();
-        i18n = I18n.getInstance();
+        i18n = I18n.getInstance("statistics");
 
         indicators = new HashSet<>();
         indicators.add(STATS_FIELD_UNIQUE_VISITORS);

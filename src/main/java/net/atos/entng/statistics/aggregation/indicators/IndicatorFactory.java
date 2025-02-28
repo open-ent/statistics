@@ -33,7 +33,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 
+import org.bson.conversions.Bson;
 import org.entcore.common.aggregation.MongoConstants.COLLECTIONS;
+import org.entcore.common.aggregation.filters.IndicatorFilter;
 import org.entcore.common.aggregation.filters.dbbuilders.MongoDBBuilder;
 import org.entcore.common.aggregation.filters.mongo.IndicatorFilterMongoImpl;
 import org.entcore.common.aggregation.groups.IndicatorGroup;
@@ -51,7 +53,7 @@ public class IndicatorFactory {
 
 	// 1) Indicators that are incremented every day
 	// UserAccount Activation
-	public static Indicator getActivationIndicator(Collection<IndicatorFilterMongoImpl> filters, Date pWriteDate) {
+	public static Indicator getActivationIndicator(Collection<IndicatorFilter> filters, Date pWriteDate) {
         Collection<IndicatorGroup> indicatorGroups = new ArrayList<>();
         indicatorGroups.add(new IndicatorGroup(TRACE_FIELD_STRUCTURES).setArray(true)
                 .addAndReturnChild(TRACE_FIELD_PROFILE)
@@ -100,7 +102,7 @@ public class IndicatorFactory {
     }
 
 	// Connections
-	public static Indicator getConnectionIndicator(Collection<IndicatorFilterMongoImpl> filters, Date pWriteDate) {
+	public static Indicator getConnectionIndicator(Collection<IndicatorFilter> filters, Date pWriteDate) {
 		Collection<IndicatorGroup> indicatorGroups = new ArrayList<IndicatorGroup>();
 		indicatorGroups.add(new IndicatorGroup(TRACE_FIELD_STRUCTURES).setArray(true)
 			.addAndReturnChild(TRACE_FIELD_PROFILE));
@@ -111,7 +113,7 @@ public class IndicatorFactory {
 	}
 
 	// Access to applications
-	public static Indicator getAccessIndicator(Collection<IndicatorFilterMongoImpl> filters, Date pWriteDate) {
+	public static Indicator getAccessIndicator(Collection<IndicatorFilter> filters, Date pWriteDate) {
 		Collection<IndicatorGroup> indicatorGroups = new ArrayList<IndicatorGroup>();
 		indicatorGroups.add(new IndicatorGroup(TRACE_FIELD_MODULE)
 			.addAndReturnChild(new IndicatorGroup(TRACE_FIELD_STRUCTURES).setArray(true))
@@ -121,7 +123,7 @@ public class IndicatorFactory {
 		indicator.setWriteDate(pWriteDate);
 		return indicator;
 	}
-	public static Indicator getConnectorsIndicator(Collection<IndicatorFilterMongoImpl> filters, Date pWriteDate) {
+	public static Indicator getConnectorsIndicator(Collection<IndicatorFilter> filters, Date pWriteDate) {
 		Collection<IndicatorGroup> indicatorGroups = new ArrayList<IndicatorGroup>();
 		indicatorGroups.add(new IndicatorGroup(TRACE_FIELD_MODULE)
 				.addAndReturnChild(new IndicatorGroup(TRACE_FIELD_STRUCTURES).setArray(true))
@@ -141,7 +143,7 @@ public class IndicatorFactory {
 	}
 
 	// Unique visitors
-	public static Indicator getUniqueVisitorsIndicator(Collection<IndicatorFilterMongoImpl> filters, Date pWriteDate) {
+	public static Indicator getUniqueVisitorsIndicator(Collection<IndicatorFilter> filters, Date pWriteDate) {
 		Collection<IndicatorGroup> indicatorGroups = new ArrayList<IndicatorGroup>();
 		final IndicatorGroup profileIg = new IndicatorGroup(TRACE_FIELD_STRUCTURES).setArray(true)
 			.addAndReturnChild(TRACE_FIELD_PROFILE);
@@ -173,7 +175,7 @@ public class IndicatorFactory {
 
 			@Override
 			// Set the indicator's value (instead of incrementing it)
-			protected void writeAction(MongoDBBuilder criteriaQuery, int resultsCount, Handler<Message<JsonObject>> handler){
+			protected void writeAction(Bson criteriaQuery, int resultsCount, Handler<Message<JsonObject>> handler){
 				mongo.update(COLLECTIONS.stats.name(),
 						MongoQueryBuilder.build(criteriaQuery),
 						new MongoUpdateBuilder().set(this.getWriteKey(), resultsCount).build(),
@@ -181,6 +183,8 @@ public class IndicatorFactory {
 						true,
 						handler);
 			}
+
+
 		};
 		indicator.setWriteKey(STATS_FIELD_UNIQUE_VISITORS);
 		indicator.setWriteDate(pWriteDate);

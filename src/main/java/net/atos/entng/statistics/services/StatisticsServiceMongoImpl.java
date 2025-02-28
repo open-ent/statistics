@@ -33,6 +33,9 @@ import static org.entcore.common.aggregation.MongoConstants.TRACE_TYPE_CONNECTOR
 
 import java.util.List;
 
+import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.Projections;
+import org.bson.conversions.Bson;
 import org.entcore.common.mongodb.MongoDbResult;
 import org.entcore.common.service.impl.MongoDbCrudService;
 import io.vertx.core.Handler;
@@ -92,23 +95,25 @@ public class StatisticsServiceMongoImpl extends MongoDbCrudService implements St
 		boolean isAccessIndicator = TRACE_TYPE_SVC_ACCESS.equals(indicator);
 		boolean isConnector = TRACE_TYPE_CONNECTOR.equals(indicator);
 		String groupedBy = (isAccessIndicator || isConnector) ? "module/structures/profil" : "structures/profil";
-		final QueryBuilder criteriaQuery = QueryBuilder
-				.start(STATS_FIELD_GROUPBY).is(groupedBy)
-				.and(STATS_FIELD_DATE).greaterThanEquals(formatTimestamp(start)).lessThan(formatTimestamp(end))
-				.and(indicator).exists(true);
+		Bson criteriaQuery = Filters.and(
+				Filters.eq(STATS_FIELD_GROUPBY, groupedBy),
+				Filters.gte(STATS_FIELD_DATE, formatTimestamp(start)),
+				Filters.lt(STATS_FIELD_DATE, formatTimestamp(end)),
+				Filters.exists(indicator, true)
+		);
 
 		String module = params.getString(PARAM_MODULE);
 		boolean moduleIsEmpty = module==null || module.trim().isEmpty();
 		boolean isAccessAllModules = isAccessIndicator && moduleIsEmpty;
 		if(isAccessIndicator && !moduleIsEmpty || isConnector && !moduleIsEmpty) {
-			criteriaQuery.and(MODULE_ID).is(module);
+			criteriaQuery = Filters.and(criteriaQuery, Filters.eq(MODULE_ID, module));
 		}
 
 		if(schoolIds.size() > 1) {
-			criteriaQuery.and(STRUCTURES_ID).in(schoolIds);
+			criteriaQuery = Filters.and(criteriaQuery, Filters.in(STRUCTURES_ID, schoolIds));
 		}
 		else {
-			criteriaQuery.and(STRUCTURES_ID).is(schoolIds.get(0));
+			criteriaQuery = Filters.and(criteriaQuery, Filters.eq(STRUCTURES_ID, schoolIds.get(0)));
 
 			// When getting data for only one module, a "find" is enough (no need to aggregate data)
 			if(!isExport && !isAccessAllModules) {
@@ -158,52 +163,54 @@ public class StatisticsServiceMongoImpl extends MongoDbCrudService implements St
 
 		pipeline.add(groupBy);
 
-		QueryBuilder projection = QueryBuilder.start("_id").is(0)
-				.and(PROFILE_ID).is("$_id."+PROFILE_ID);
-		if(isActivatedAccountsIndicator) {
-			projection.and(STATS_FIELD_ACCOUNTS).is(1);
+		Bson projection = Projections.fields(
+				Projections.excludeId(),
+				Projections.computed(PROFILE_ID, "$_id." + PROFILE_ID));
+		if (isActivatedAccountsIndicator) {
+			projection = Projections.fields(projection, Projections.include(STATS_FIELD_ACCOUNTS));
 		}
 
-		if(!isExport) {
-			projection.and(indicator).is(1);
-			if(isAccessAllModules) {
-				projection.and(MODULE_ID).is("$_id."+MODULE_ID);
-			}
-			else {
-				projection.and(STATS_FIELD_DATE).is("$_id."+STATS_FIELD_DATE);
+		if (!isExport) {
+			projection = Projections.fields(projection, Projections.include(indicator));
+
+			if (isAccessAllModules) {
+				projection = Projections.fields(projection, Projections.computed(MODULE_ID, "$_id." + MODULE_ID));
+			} else {
+				projection = Projections.fields(projection, Projections.computed(STATS_FIELD_DATE, "$_id." + STATS_FIELD_DATE));
 			}
 
 			// Sum stats for all structure_ids
 			pipeline.add(new JsonObject().put("$project", MongoQueryBuilder.build(projection)));
-		}
-		else {
+		} else {
 			// Projection : keep 'yyyy-MM' from 'yyyy-MM-dd HH:mm.ss.SSS'
-			DBObject dateSubstring = new BasicDBObject();
-			BasicDBList dbl = new BasicDBList();
-			dbl.add("$_id."+STATS_FIELD_DATE);
-			dbl.add(0);
-			dbl.add(7);
-			dateSubstring.put("$substr", dbl);
+			BasicDBList substrParams = new BasicDBList();
+			substrParams.add("$_id." + STATS_FIELD_DATE);
+			substrParams.add(0);
+			substrParams.add(7);
+			BasicDBObject dateSubstring = new BasicDBObject("$substr", substrParams);
 
-			projection.and(STATS_FIELD_DATE).is(dateSubstring)
-				.and("indicatorValue").is("$"+indicator); // Replace indicatorName by label "indicatorValue", so that the mustache template can be generic
-
+			projection = Projections.fields(
+					projection,
+					Projections.computed(STATS_FIELD_DATE, dateSubstring),
+					Projections.computed("indicatorValue", "$" + indicator) // Replace indicatorName by label "indicatorValue"
+			);
 
 			JsonObject sort = sortByStructureDateProfile;
 
 			// Export stats for each structure_id
-			id.put(STRUCTURES_ID, "$"+STRUCTURES_ID);
-			projection.and(STRUCTURES_ID).is("$_id."+STRUCTURES_ID);
+			id.put(STRUCTURES_ID, "$" + STRUCTURES_ID);
+			projection = Projections.fields(projection, Projections.computed(STRUCTURES_ID, "$_id." + STRUCTURES_ID));
 
-			if(isAccessIndicator) {
+			if (isAccessIndicator) {
 				if (isAccessAllModules) {
 					sort = sort.copy().put(MODULE_ID, 1);
 				}
 
 				// Export stats for each module_id
-				id.put(MODULE_ID, "$"+MODULE_ID);
-				projection.and(MODULE_ID).is("$_id."+MODULE_ID);
+				id.put(MODULE_ID, "$" + MODULE_ID);
+				projection = Projections.fields(projection, Projections.computed(MODULE_ID, "$_id." + MODULE_ID));
 			}
+
 
 			pipeline.add(new JsonObject().put("$project", MongoQueryBuilder.build(projection)));
 			pipeline.add(new JsonObject().put("$sort", sort));

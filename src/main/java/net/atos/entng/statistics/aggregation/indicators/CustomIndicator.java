@@ -4,7 +4,8 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import org.entcore.common.aggregation.filters.mongo.IndicatorFilterMongoImpl;
+import org.entcore.common.aggregation.filters.IndicatorFilter;
+
 import org.entcore.common.aggregation.indicators.Indicator;
 
 import java.util.Collection;
@@ -28,5 +29,5 @@ public interface CustomIndicator {
 
     JsonArray filter(List<String> schoolIds, JsonObject params, JsonArray mobileClientIds, boolean export);
 
-    Indicator indicator(Collection<IndicatorFilterMongoImpl> filters, Date pWriteDate);
+    Indicator indicator(Collection<IndicatorFilter> filters, Date pWriteDate);
 }

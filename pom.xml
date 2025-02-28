@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.openent</groupId>
+        <artifactId>modules</artifactId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+
+    <groupId>org.openent</groupId>
+    <artifactId>statistics</artifactId>
+    <version>1.12.7</version>
+
+
+    <properties>
+        <mongo.version>4.8.1</mongo.version>
+    </properties>
+
+    <scm>
+        <connection>scm:git:https://github.com/open-ent/statistics.git</connection>
+        <developerConnection>scm:git:https://github.com/open-ent/statistics.git</developerConnection>
+        <url>https://github.com/open-ent/statistics</url>
+    </scm>
+
+    <repositories>
+        <repository>
+            <id>ode</id>
+            <name>ODE Repository</name>
+            <url>https://maven.opendigitaleducation.com/nexus/content/groups/public</url>
+        </repository>
+    </repositories>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-core</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.entcore</groupId>
+            <artifactId>common</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>fr.wseduc</groupId>
+            <artifactId>web-utils</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>fr.wseduc</groupId>
+            <artifactId>mongodb-helper</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.mongodb</groupId>
+            <artifactId>mongodb-driver-sync</artifactId>
+            <version>${mongo.version}</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.mongodb</groupId>
+            <artifactId>mongodb-driver-core</artifactId>
+            <version>${mongo.version}</version>
+        </dependency>
+
+
+        <dependency>
+            <groupId>org.mongodb</groupId>
+            <artifactId>mongodb-driver-legacy</artifactId>
+            <version>${mongo.version}</version>
+        </dependency>
+
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>fr.wseduc</groupId>
+            <artifactId>vertx-cron-timer</artifactId>
+        </dependency>
+
+    </dependencies>
+</project>

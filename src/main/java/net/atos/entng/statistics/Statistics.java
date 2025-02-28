@@ -24,6 +24,7 @@ import java.util.Calendar;
 import java.util.Date;
 
 import fr.wseduc.cron.CronTrigger;
+import io.vertx.core.Promise;
 import net.atos.entng.statistics.aggregation.AggregateTask;
 import net.atos.entng.statistics.aggregation.indicators.ESActivatedAccountsIndicatorImpl;
 import net.atos.entng.statistics.controllers.StatisticsController;
@@ -46,8 +47,8 @@ public class Statistics extends BaseServer {
 	public static boolean deviceFilter = true;
 
 	@Override
-	public void start() throws Exception {
-		super.start();
+	public void start(final Promise<Void> startPromise) throws Exception {
+		super.start(startPromise);
 
 		JsonArray accessModules = config.getJsonArray("access-modules", null);
 		if(accessModules==null || accessModules.size()==0) {

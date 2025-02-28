@@ -3,10 +3,12 @@ package net.atos.entng.statistics.indicators;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import net.atos.entng.statistics.aggregation.indicators.CustomIndicator;
-import org.entcore.common.aggregation.filters.mongo.IndicatorFilterMongoImpl;
+
 import org.entcore.common.aggregation.groups.IndicatorGroup;
 import org.entcore.common.aggregation.indicators.Indicator;
 import org.entcore.common.aggregation.indicators.mongo.IndicatorMongoImpl;
+
+import org.entcore.common.aggregation.filters.IndicatorFilter;
 
 import java.util.*;
 
@@ -42,7 +44,7 @@ public class WebConferenceRoomCreation implements CustomIndicator {
     }
 
     @Override
-    public Indicator indicator(Collection<IndicatorFilterMongoImpl> filters, Date pWriteDate) {
+    public Indicator indicator(Collection<IndicatorFilter> filters, Date pWriteDate) {
         Collection<IndicatorGroup> indicatorGroups = new ArrayList<>();
         indicatorGroups.add(new IndicatorGroup(TRACE_FIELD_MODULE)
                 .addAndReturnChild(new IndicatorGroup(TRACE_FIELD_STRUCTURES).setArray(true))

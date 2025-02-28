@@ -32,6 +32,8 @@ import static net.atos.entng.statistics.aggregation.indicators.IndicatorConstant
 import java.util.Date;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.mongodb.client.model.Filters;
+import org.bson.conversions.Bson;
 import org.entcore.common.aggregation.MongoConstants.COLLECTIONS;
 import org.entcore.common.aggregation.filters.dbbuilders.MongoDBBuilder;
 import org.entcore.common.aggregation.indicators.Indicator;
@@ -113,11 +115,12 @@ public class IndicatorCustomImpl extends Indicator {
 
 						String date = MongoDb.formatDate(IndicatorCustomImpl.this.getWriteDate());
 
-						MongoDBBuilder criteriaQuery = new MongoDBBuilder();
-						criteriaQuery.put(STATS_FIELD_DATE).is(date)
-							.put(STATS_FIELD_GROUPBY).is(TRACE_FIELD_STRUCTURES+"/"+TRACE_FIELD_PROFILE)
-							.put(PROFILE_ID).is(profile)
-							.put(STRUCTURES_ID).is(structure);
+						Bson criteriaQuery = Filters.and(
+								Filters.eq(STATS_FIELD_DATE, date),
+								Filters.eq(STATS_FIELD_GROUPBY, TRACE_FIELD_STRUCTURES + "/" + TRACE_FIELD_PROFILE),
+								Filters.eq(PROFILE_ID, profile),
+								Filters.eq(STRUCTURES_ID, structure)
+						);
 
 						MongoUpdateBuilder update = new MongoUpdateBuilder()
 							.set(STATS_FIELD_ACCOUNTS, accounts)

@@ -86,10 +86,12 @@ public class StatsController extends MongoDbControllerHelper {
 	@Get("")
 	@SecuredAction(value = view)
 	public void view(HttpServerRequest request) {
-		// CCTP 51C — bascule AngularJS/React. Défaut piloté par la conf `frontend-ui`
-		// (fallback "angular"), surchargée à la demande par `?ui=react|angular`.
+		// CCTP 51C — React PAR DÉFAUT pour ce module : l'IHM AngularJS n'a jamais été
+		// gulp-buildée dans ce déploiement (view/stats.html absent → /stats en 500). Le
+		// fallback Java est donc "react" (la conf `frontend-ui` étant strippée par le
+		// springboard) ; repli AngularJS possible via `?ui=angular`.
 		final String uiParam = request.params().get("ui");
-		final String frontendUi = "react".equals(config.getString("frontend-ui", "angular")) ? "react" : "angular";
+		final String frontendUi = "angular".equals(config.getString("frontend-ui", "react")) ? "angular" : "react";
 		final String ui = ("react".equals(uiParam) || "angular".equals(uiParam)) ? uiParam : frontendUi;
 		if ("react".equals(ui)) {
 			renderView(request, new JsonObject(), "stats-react.html", null);

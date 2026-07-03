@@ -5,7 +5,7 @@
             "port" : 8225,
             "app-name" : "Statistiques",
             "app-address" : "/stats",
-            "frontend-ui" : "angular",
+            "frontend-ui" : "react",
             "app-icon" : "stats-large",
             "app-displayName" : "stats",
             "app-type" : "END_USER",

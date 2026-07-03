@@ -1,9 +1,9 @@
 import { useEdificeClient } from '@open-ent/react';
 import { useQuery } from '@tanstack/react-query';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { api } from '../api';
+import { api, Frequency } from '../api';
 import { accessByModule, accountsByProfile, profileLabel, yearStart } from '../utils';
 
 /** Tableau de bord Statistiques : établissement + comptes par profil + accès par module. */
@@ -12,10 +12,11 @@ export function Dashboard() {
   const { user, init } = useEdificeClient();
   const structureId = user?.structures?.[0] ?? '';
   const from = yearStart(new Date());
+  const [frequency, setFrequency] = useState<Frequency>('month');
 
   const structuresQuery = useQuery({ queryKey: ['stats', 'structures'], queryFn: () => api.getStructures() });
-  const accountsQuery = useQuery({ queryKey: ['stats', 'accounts', structureId, from], queryFn: () => api.getAccounts(structureId, from), enabled: !!structureId });
-  const accessQuery = useQuery({ queryKey: ['stats', 'access', structureId, from], queryFn: () => api.getAccess(structureId, from), enabled: !!structureId });
+  const accountsQuery = useQuery({ queryKey: ['stats', 'accounts', structureId, from, frequency], queryFn: () => api.getAccounts(structureId, from, frequency), enabled: !!structureId });
+  const accessQuery = useQuery({ queryKey: ['stats', 'access', structureId, from, frequency], queryFn: () => api.getAccess(structureId, from, frequency), enabled: !!structureId });
 
   const structure = (structuresQuery.data ?? []).find((s) => s.id === structureId) ?? (structuresQuery.data ?? [])[0];
   const profiles = useMemo(() => accountsByProfile(accountsQuery.data ?? []), [accountsQuery.data]);
@@ -36,13 +37,23 @@ export function Dashboard() {
   return (
     <div>
       <h1 className="mb-8">{t('stats.title', { defaultValue: 'Statistiques' })}</h1>
-      {structure && (
-        <p className="text-muted mb-16">
-          {structure.name}
-          {structure.classes ? ` · ${structure.classes.length} ${t('stats.classes', { defaultValue: 'classe(s)' })}` : ''}
-          {` · ${t('stats.since', { defaultValue: 'depuis le' })} ${from}`}
-        </p>
-      )}
+      <div className="d-flex justify-content-between align-items-end flex-wrap gap-8 mb-16">
+        {structure && (
+          <p className="text-muted mb-0">
+            {structure.name}
+            {structure.classes ? ` · ${structure.classes.length} ${t('stats.classes', { defaultValue: 'classe(s)' })}` : ''}
+            {` · ${t('stats.since', { defaultValue: 'depuis le' })} ${from}`}
+          </p>
+        )}
+        <div>
+          <label htmlFor="stats-freq" className="form-label">{t('stats.frequency', { defaultValue: 'Granularité' })}</label>
+          <select id="stats-freq" className="form-select" value={frequency} onChange={(e) => setFrequency(e.target.value as Frequency)}>
+            <option value="day">{t('stats.freq.day', { defaultValue: 'Jour' })}</option>
+            <option value="week">{t('stats.freq.week', { defaultValue: 'Semaine' })}</option>
+            <option value="month">{t('stats.freq.month', { defaultValue: 'Mois' })}</option>
+          </select>
+        </div>
+      </div>
 
       <div className="d-flex gap-16 flex-wrap align-items-start">
         {/* Comptes par profil */}

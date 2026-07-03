@@ -39,16 +39,19 @@ const base = { credentials: 'include' as const };
 export const getStructures = async (): Promise<StatStructure[]> =>
   json<StatStructure[]>(await fetch(`/stats/structures`, base));
 
-/** Indicateur agrégé pour une structure sur une période (mensuel). */
-async function getIndicator<T>(indicator: 'accounts' | 'access', structureId: string, from: string): Promise<T[]> {
-  const url = `/stats/list?indicator=${indicator}&from=${from}&frequency=month&entityLevel=structure&entity=${structureId}`;
+/** Granularité d'agrégation des statistiques. */
+export type Frequency = 'day' | 'week' | 'month';
+
+/** Indicateur agrégé pour une structure sur une période, à la granularité `frequency`. */
+async function getIndicator<T>(indicator: 'accounts' | 'access', structureId: string, from: string, frequency: Frequency): Promise<T[]> {
+  const url = `/stats/list?indicator=${indicator}&from=${from}&frequency=${frequency}&entityLevel=structure&entity=${structureId}`;
   return json<T[]>(await fetch(url, base));
 }
 
-export const getAccounts = (structureId: string, from: string): Promise<AccountRow[]> =>
-  getIndicator<AccountRow>('accounts', structureId, from);
+export const getAccounts = (structureId: string, from: string, frequency: Frequency = 'month'): Promise<AccountRow[]> =>
+  getIndicator<AccountRow>('accounts', structureId, from, frequency);
 
-export const getAccess = (structureId: string, from: string): Promise<AccessRow[]> =>
-  getIndicator<AccessRow>('access', structureId, from);
+export const getAccess = (structureId: string, from: string, frequency: Frequency = 'month'): Promise<AccessRow[]> =>
+  getIndicator<AccessRow>('access', structureId, from, frequency);
 
 export const api = { getStructures, getAccounts, getAccess };

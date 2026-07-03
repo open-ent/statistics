@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { AccessRow, AccountRow } from './api';
-import { accessByModule, accountsByProfile, profileLabel, yearStart } from './utils';
+import { accessByModule, accountsByProfile, formatInt, kpis, profileLabel, yearStart } from './utils';
 
 describe('accessByModule', () => {
   it('agrège par module et trie décroissant', () => {
@@ -44,5 +44,27 @@ describe('profileLabel', () => {
 describe('yearStart', () => {
   it('renvoie le 1er janvier', () => {
     expect(yearStart(new Date(2026, 6, 15))).toBe('2026-01-01');
+  });
+});
+
+describe('kpis', () => {
+  it('agrège connexions, visiteurs, accès et applications distinctes', () => {
+    const accounts: AccountRow[] = [
+      { date: '2026-06', profile: 'Teacher', authentications: 95, unique_visitors: 1 },
+      { date: '2026-07', profile: 'Teacher', authentications: 492, unique_visitors: 1 },
+    ];
+    const access: AccessRow[] = [
+      { date: '2026-06', profile: '', module: 'Blog', access: 40 },
+      { date: '2026-06', profile: '', module: 'Diary', access: 97 },
+      { date: '2026-07', profile: '', module: 'Blog', access: 3 },
+    ];
+    expect(kpis(accounts, access)).toEqual({ totalAuth: 587, totalAccess: 140, apps: 2, visitors: 2 });
+  });
+});
+
+describe('formatInt', () => {
+  it('formate avec séparateur de milliers FR', () => {
+    expect(formatInt(1234).replace(/ | /g, ' ')).toBe('1 234');
+    expect(formatInt(7)).toBe('7');
   });
 });

@@ -48,3 +48,19 @@ export function profileLabel(profile: string): string {
 export function yearStart(d: Date): string {
   return `${d.getFullYear()}-01-01`;
 }
+
+/** Indicateurs clés agrégés (bandeau KPI) à partir des lignes brutes. */
+export function kpis(accounts: AccountRow[], access: AccessRow[]): {
+  totalAuth: number; totalAccess: number; apps: number; visitors: number;
+} {
+  const totalAuth = accounts.reduce((s, r) => s + (r.authentications ?? 0), 0);
+  const visitors = accounts.reduce((s, r) => s + (r.unique_visitors ?? 0), 0);
+  const totalAccess = access.reduce((s, r) => s + (r.access ?? 0), 0);
+  const apps = new Set(access.filter((r) => r.module).map((r) => r.module)).size;
+  return { totalAuth, totalAccess, apps, visitors };
+}
+
+/** Formate un entier avec séparateur de milliers (espace insécable fine, locale FR). */
+export function formatInt(n: number): string {
+  return n.toLocaleString('fr-FR');
+}

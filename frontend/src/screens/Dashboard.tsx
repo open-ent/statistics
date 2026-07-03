@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api, Frequency } from '../api';
-import { accessByModule, accountsByProfile, profileLabel, yearStart } from '../utils';
+import { accessByModule, accountsByProfile, formatInt, kpis, profileLabel, yearStart } from '../utils';
 
 /** Tableau de bord Statistiques : établissement + comptes par profil + accès par module. */
 export function Dashboard() {
@@ -22,6 +22,7 @@ export function Dashboard() {
   const profiles = useMemo(() => accountsByProfile(accountsQuery.data ?? []), [accountsQuery.data]);
   const modules = useMemo(() => accessByModule(accessQuery.data ?? []), [accessQuery.data]);
   const maxAccess = modules[0]?.total ?? 0;
+  const k = useMemo(() => kpis(accountsQuery.data ?? [], accessQuery.data ?? []), [accountsQuery.data, accessQuery.data]);
 
   if (init && !structureId) {
     return (
@@ -53,6 +54,21 @@ export function Dashboard() {
             <option value="month">{t('stats.freq.month', { defaultValue: 'Mois' })}</option>
           </select>
         </div>
+      </div>
+
+      {/* Bandeau d'indicateurs clés */}
+      <div className="d-flex gap-16 flex-wrap mb-16">
+        {[
+          { k: 'kpi-auth', label: t('stats.kpi.auth', { defaultValue: 'Connexions' }), value: k.totalAuth },
+          { k: 'kpi-visitors', label: t('stats.kpi.visitors', { defaultValue: 'Visiteurs uniques' }), value: k.visitors },
+          { k: 'kpi-access', label: t('stats.kpi.access', { defaultValue: 'Accès applications' }), value: k.totalAccess },
+          { k: 'kpi-apps', label: t('stats.kpi.apps', { defaultValue: 'Applications utilisées' }), value: k.apps },
+        ].map((c) => (
+          <div key={c.k} className="card p-16 flex-grow-1" style={{ minWidth: 160 }}>
+            <div style={{ fontSize: 28, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{formatInt(c.value)}</div>
+            <div className="text-muted" style={{ fontSize: 13 }}>{c.label}</div>
+          </div>
+        ))}
       </div>
 
       <div className="d-flex gap-16 flex-wrap align-items-start">

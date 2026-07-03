@@ -103,7 +103,10 @@ jobs:
         run: |
           ENTCORE_OPT=""
           if [ -n "$ENTCORE_VERSION" ]; then ENTCORE_OPT="-DentCoreVersion=$ENTCORE_VERSION"; fi
-          mvn clean package -DskipTests -B -DbuildNumber=${GITHUB_SHA::8} -DscmBranch=${GITHUB_REF_NAME} $ENTCORE_OPT
+          # -Dmaven.test.skip=true (et pas seulement -DskipTests) : évite la COMPILATION des tests,
+          # qui exige org.entcore:tests:6.14.9-patched — jar de tests entcore NON publié dans les repos
+          # -> DependencyResolutionException. Le publish du fat mod n'a pas besoin des tests. CCTP 51C.
+          mvn clean package -Dmaven.test.skip=true -B -DbuildNumber=${GITHUB_SHA::8} -DscmBranch=${GITHUB_REF_NAME} $ENTCORE_OPT
         env:
           ENTCORE_VERSION: ${{ github.event.inputs.entcore_version }}
 

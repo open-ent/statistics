@@ -86,7 +86,16 @@ public class StatsController extends MongoDbControllerHelper {
 	@Get("")
 	@SecuredAction(value = view)
 	public void view(HttpServerRequest request) {
-		renderView(request);
+		// CCTP 51C — bascule AngularJS/React. Défaut piloté par la conf `frontend-ui`
+		// (fallback "angular"), surchargée à la demande par `?ui=react|angular`.
+		final String uiParam = request.params().get("ui");
+		final String frontendUi = "react".equals(config.getString("frontend-ui", "angular")) ? "react" : "angular";
+		final String ui = ("react".equals(uiParam) || "angular".equals(uiParam)) ? uiParam : frontendUi;
+		if ("react".equals(ui)) {
+			renderView(request, new JsonObject(), "stats-react.html", null);
+		} else {
+			renderView(request);
+		}
 		eventHelper.onAccess(request);
 	}
 

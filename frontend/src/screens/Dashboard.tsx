@@ -2,6 +2,7 @@ import { useEdificeClient } from '@open-ent/react';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router-dom';
 
 import { api, Frequency } from '../api';
 import { accessByModule, accountsByProfile, formatInt, kpis, profileLabel, yearStart } from '../utils';
@@ -16,10 +17,14 @@ export function Dashboard() {
   // les profils Collectivité/ADML, dont /stats/structures peut renvoyer plusieurs
   // établissements (périmètre de fonction) en plus de leur structure d'affectation.
   const [selectedStructureId, setSelectedStructureId] = useState<string | null>(null);
+  // Lien direct depuis dashboard/structure-info (?structureId=<id> dans le hash de route) :
+  // préselectionne l'établissement visé sans passer par le sélecteur.
+  const [searchParams] = useSearchParams();
+  const requestedStructureId = searchParams.get('structureId');
 
   const structuresQuery = useQuery({ queryKey: ['stats', 'structures'], queryFn: () => api.getStructures() });
   const structuresList = structuresQuery.data ?? [];
-  const structureId = selectedStructureId ?? user?.structures?.[0] ?? structuresList[0]?.id ?? '';
+  const structureId = selectedStructureId ?? requestedStructureId ?? user?.structures?.[0] ?? structuresList[0]?.id ?? '';
   const accountsQuery = useQuery({ queryKey: ['stats', 'accounts', structureId, from, frequency], queryFn: () => api.getAccounts(structureId, from, frequency), enabled: !!structureId });
   const accessQuery = useQuery({ queryKey: ['stats', 'access', structureId, from, frequency], queryFn: () => api.getAccess(structureId, from, frequency), enabled: !!structureId });
 

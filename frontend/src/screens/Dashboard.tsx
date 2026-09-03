@@ -10,15 +10,20 @@ import { accessByModule, accountsByProfile, formatInt, kpis, profileLabel, yearS
 export function Dashboard() {
   const { t } = useTranslation(['stats', 'common']);
   const { user, init } = useEdificeClient();
-  const structureId = user?.structures?.[0] ?? '';
   const from = yearStart(new Date());
   const [frequency, setFrequency] = useState<Frequency>('month');
+  // Choix explicite de l'utilisateur, sinon sa structure de rattachement : nécessaire pour
+  // les profils Collectivité/ADML, dont /stats/structures peut renvoyer plusieurs
+  // établissements (périmètre de fonction) en plus de leur structure d'affectation.
+  const [selectedStructureId, setSelectedStructureId] = useState<string | null>(null);
 
   const structuresQuery = useQuery({ queryKey: ['stats', 'structures'], queryFn: () => api.getStructures() });
+  const structuresList = structuresQuery.data ?? [];
+  const structureId = selectedStructureId ?? user?.structures?.[0] ?? structuresList[0]?.id ?? '';
   const accountsQuery = useQuery({ queryKey: ['stats', 'accounts', structureId, from, frequency], queryFn: () => api.getAccounts(structureId, from, frequency), enabled: !!structureId });
   const accessQuery = useQuery({ queryKey: ['stats', 'access', structureId, from, frequency], queryFn: () => api.getAccess(structureId, from, frequency), enabled: !!structureId });
 
-  const structure = (structuresQuery.data ?? []).find((s) => s.id === structureId) ?? (structuresQuery.data ?? [])[0];
+  const structure = structuresList.find((s) => s.id === structureId) ?? structuresList[0];
   const profiles = useMemo(() => accountsByProfile(accountsQuery.data ?? []), [accountsQuery.data]);
   const modules = useMemo(() => accessByModule(accessQuery.data ?? []), [accessQuery.data]);
   const maxAccess = modules[0]?.total ?? 0;
@@ -46,13 +51,30 @@ export function Dashboard() {
             {` · ${t('stats.since', { defaultValue: 'depuis le' })} ${from}`}
           </p>
         )}
-        <div>
-          <label htmlFor="stats-freq" className="form-label">{t('stats.frequency', { defaultValue: 'Granularité' })}</label>
-          <select id="stats-freq" className="form-select" value={frequency} onChange={(e) => setFrequency(e.target.value as Frequency)}>
-            <option value="day">{t('stats.freq.day', { defaultValue: 'Jour' })}</option>
-            <option value="week">{t('stats.freq.week', { defaultValue: 'Semaine' })}</option>
-            <option value="month">{t('stats.freq.month', { defaultValue: 'Mois' })}</option>
-          </select>
+        <div className="d-flex gap-8 flex-wrap">
+          {structuresList.length > 1 && (
+            <div>
+              <label htmlFor="stats-structure" className="form-label">{t('stats.structure', { defaultValue: 'Établissement' })}</label>
+              <select
+                id="stats-structure"
+                className="form-select"
+                value={structureId}
+                onChange={(e) => setSelectedStructureId(e.target.value)}
+              >
+                {structuresList.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          <div>
+            <label htmlFor="stats-freq" className="form-label">{t('stats.frequency', { defaultValue: 'Granularité' })}</label>
+            <select id="stats-freq" className="form-select" value={frequency} onChange={(e) => setFrequency(e.target.value as Frequency)}>
+              <option value="day">{t('stats.freq.day', { defaultValue: 'Jour' })}</option>
+              <option value="week">{t('stats.freq.week', { defaultValue: 'Semaine' })}</option>
+              <option value="month">{t('stats.freq.month', { defaultValue: 'Mois' })}</option>
+            </select>
+          </div>
         </div>
       </div>
 

@@ -26,7 +26,7 @@ jobs:
     name: Tag & Publish Dev Build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -68,9 +68,9 @@ jobs:
           mkdir -p ../src/main/resources/public
           cp -r dist/public/. ../src/main/resources/public/
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
-          java-version: '8'
+          java-version: '21'
           distribution: temurin
           cache: maven
 

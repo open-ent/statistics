@@ -51,7 +51,7 @@ jobs:
             sh -c "npm install --legacy-peer-deps && node_modules/gulp/bin/gulp.js build"
 
       # [B] IHM React (vue *-react.html) : sous-projet Vite frontend/ (Node 20).
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '20'
       - uses: pnpm/action-setup@v4

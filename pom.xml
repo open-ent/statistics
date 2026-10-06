@@ -83,12 +83,6 @@
       <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>org.entcore</groupId>
-      <artifactId>common</artifactId>
-      <version>${entCoreLibsVersion}</version>
-      <scope>compile</scope>
-    </dependency>
-    <dependency>
       <groupId>com.opendigitaleducation</groupId>
       <artifactId>stats</artifactId>
       <scope>compile</scope>

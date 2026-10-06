@@ -24,9 +24,14 @@
       <name>ODE Repository</name>
       <url>https://maven.opendigitaleducation.com/nexus/content/groups/public</url>
     </repository>
+    <repository>
+      <id>pt-releases</id>
+      <name>rct-nexus maven-releases (entcore-libs patchées)</name>
+      <url>https://rct-nexus.tech.fr/repository/maven-releases/</url>
+    </repository>
   </repositories>
   <properties>
-        <entcore.version>6.14.9-patched</entcore.version>
+        <entcore.version>6.16.14-patched</entcore.version>
     <vertx-cron-timer.version>3.0.0</vertx-cron-timer.version>
     <joda-time.version>2.9.4</joda-time.version>
     <postgres-driver.version>42.2.26</postgres-driver.version>
@@ -35,8 +40,8 @@
     <stats-repository.version>1.9.0</stats-repository.version>
     <modMongoVersion>4.2.0</modMongoVersion>
     <modJsonSchemaValidatorVersion>2.2.0</modJsonSchemaValidatorVersion>
-    <entCoreLibsVersion>6.14.9-patched</entCoreLibsVersion>
-    <entCoreVersion>6.14.9-patched</entCoreVersion>
+    <entCoreLibsVersion>6.16.7-patched</entCoreLibsVersion>
+    <entCoreVersion>6.16.14-patched</entCoreVersion>
   </properties>
   <dependencies>
     <dependency>
@@ -80,7 +85,7 @@
     <dependency>
       <groupId>org.entcore</groupId>
       <artifactId>common</artifactId>
-      <version>${entcore.version}</version>
+      <version>${entCoreLibsVersion}</version>
       <scope>compile</scope>
     </dependency>
     <dependency>

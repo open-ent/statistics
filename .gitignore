@@ -10,6 +10,7 @@
 **/dist
 **/temp
 node_modules
+.yarn/
 bower_components
 rev-manifest.json
 **/ts/entcore

@@ -40,10 +40,13 @@ import org.entcore.common.events.EventStoreFactory;
 import org.entcore.common.http.BaseServer;
 import org.entcore.common.mongodb.MongoDbConf;
 
+import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+
+import fr.wseduc.mongodb.MongoDb;
 
 import fr.wseduc.cron.CronTrigger;
 import fr.wseduc.stats.controllers.JobsController;
@@ -180,7 +183,40 @@ public class Stats extends BaseServer {
 		addController(statsController);
 		MongoDbConf.getInstance().setCollection(COLLECTIONS.stats.name());
 		addFilter(new WorkflowFilter(this.vertx.eventBus(), "stats.view", "fr.wseduc.stats.controllers.StatsController|view"));
+
+		// Index the stats collection on the criteria used by the nightly aggregation upserts
+		// (IndicatorMongoImpl.writeStats). Without it each of the ~thousands of upserts does a
+		// full collection scan, saturating MongoDB and triggering connection/reply timeouts.
+		ensureStatsIndexes(COLLECTIONS.stats.name());
+
 		return Future.succeededFuture();
+	}
+
+	/**
+	 * Idempotently create the compound index used by the aggregation write path.
+	 * Re-running with the same specification is a no-op on MongoDB.
+	 */
+	private void ensureStatsIndexes(final String collection) {
+		final JsonObject index = new JsonObject()
+				.put("key", new JsonObject()
+						.put("date", 1)
+						.put("groupedBy", 1)
+						.put("structures_id", 1)
+						.put("classes_id", 1)
+						.put("profil_id", 1)
+						.put("module_id", 1))
+				.put("name", "stats_aggregation_idx")
+				.put("background", true);
+		final JsonObject command = new JsonObject()
+				.put("createIndexes", collection)
+				.put("indexes", new JsonArray().add(index));
+		MongoDb.getInstance().command(command.encode(), (Message<JsonObject> message) -> {
+			if (!"ok".equals(message.body().getString("status"))) {
+				logger.error("[Stats] Failed to ensure stats_aggregation_idx : " + message.body().encode());
+			} else {
+				logger.info("[Stats] stats_aggregation_idx ensured on collection " + collection);
+			}
+		});
 	}
 
 }

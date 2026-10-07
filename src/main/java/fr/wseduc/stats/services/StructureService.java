@@ -43,6 +43,12 @@ public class StructureService {
     }
 
     public void getStructuresHierarchyAndClasses(String userId, Handler<Either<String, JsonArray>> handler) {
+        // Deux sources d'établissements, unies : (1) l'appartenance directe (structure
+        // d'affectation, via ProfileGroup/FunctionGroup) et (2) le périmètre accordé par
+        // une fonction à portée élargie (ADMIN_LOCAL, ADMIN_COLLECTIVITE) — porté par
+        // rf.scope sur HAS_FUNCTION, pas par une appartenance à un groupe de CES
+        // établissements-là. Sans (2), un profil Collectivité ne voit ici que sa structure
+        // de rattachement (ex. une DSDEN) et jamais les établissements de son territoire.
         final String query =
                 "MATCH (:User {id: {userId}})-[:IN]->(pg)-[:DEPENDS]->(s:Structure)" +
                 " WHERE (pg:ProfileGroup OR pg:FunctionGroup) " +
@@ -53,6 +59,15 @@ public class StructureService {
                 " WITH DISTINCT s, CASE WHEN any(p in parents where p <> {id: null, name: null}) THEN parents END as parents," +
                 " CASE WHEN any(c in classes where c <> {id: null, name: null}) THEN classes END as classes " +
                 " RETURN DISTINCT s.id as id, s.name as name, parents, classes, length(coalesce(parents,[])) > 0 as notroot " +
+                " UNION " +
+                "MATCH (:User {id: {userId}})-[rf:HAS_FUNCTION]->(f:Function)" +
+                " WHERE (f.externalId = \"ADMIN_LOCAL\" OR f.externalId = \"ADMIN_COLLECTIVITE\") AND rf.scope IS NOT NULL " +
+                " UNWIND rf.scope as scopeId " +
+                " MATCH (s:Structure {id: scopeId}) " +
+                " OPTIONAL MATCH (:User {id: {userId}})-[:IN]->(:ProfileGroup)-[:DEPENDS]->(c:Class)-[:BELONGS]->(s)" +
+                " WITH DISTINCT s, COLLECT(distinct {id: c.id, name: c.name}) as classes" +
+                " RETURN DISTINCT s.id as id, s.name as name, null as parents," +
+                " CASE WHEN any(c in classes where c <> {id: null, name: null}) THEN classes END as classes, false as notroot " +
                 " ORDER BY notroot, name ";
 
         final JsonObject params = new JsonObject().put("userId", userId);

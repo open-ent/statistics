@@ -40,7 +40,7 @@
     <stats-repository.version>1.9.0</stats-repository.version>
     <modMongoVersion>4.2.0</modMongoVersion>
     <modJsonSchemaValidatorVersion>2.2.0</modJsonSchemaValidatorVersion>
-    <entCoreLibsVersion>6.16.7-patched</entCoreLibsVersion>
+    <entCoreLibsVersion>6.16.8-patched</entCoreLibsVersion>
     <entCoreVersion>6.16.14-patched</entCoreVersion>
   </properties>
   <dependencies>

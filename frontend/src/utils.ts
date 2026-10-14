@@ -1,6 +1,7 @@
 /** Fonctions pures du module Statistiques, testables. */
 
 import type { AccessRow, AccountRow } from './api';
+import { dateLocale } from './locale';
 
 /** Agrège les accès par module (somme du champ `access`), trié décroissant. */
 export function accessByModule(rows: AccessRow[]): Array<{ module: string; total: number }> {
@@ -60,7 +61,7 @@ export function kpis(accounts: AccountRow[], access: AccessRow[]): {
   return { totalAuth, totalAccess, apps, visitors };
 }
 
-/** Formate un entier avec séparateur de milliers (espace insécable fine, locale FR). */
+/** Formate un entier avec le séparateur de milliers de la locale de la session. */
 export function formatInt(n: number): string {
-  return n.toLocaleString('fr-FR');
+  return n.toLocaleString(dateLocale());
 }

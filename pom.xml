@@ -33,8 +33,8 @@
   <properties>
         <entcore.version>6.16.14-patched</entcore.version>
     <vertx-cron-timer.version>3.0.0</vertx-cron-timer.version>
-    <joda-time.version>2.9.4</joda-time.version>
-    <postgres-driver.version>42.2.26</postgres-driver.version>
+    <joda-time.version>2.15.0</joda-time.version>
+    <postgres-driver.version>42.7.11</postgres-driver.version>
     <hikari.version>2.4.2</hikari.version>
     <mod-postgresql.version>2.2.0</mod-postgresql.version>
     <stats-repository.version>1.9.0</stats-repository.version>

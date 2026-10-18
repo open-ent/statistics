@@ -27,8 +27,15 @@ export interface AccessRow {
   unique_access?: number;
 }
 
+/** Erreur HTTP typée : le code distingue « pas de droit » (401/403) d'une panne. */
+export class HttpError extends Error {
+  constructor(public status: number) {
+    super(String(status));
+  }
+}
+
 async function json<T>(res: Response): Promise<T> {
-  if (!res.ok) throw new Error(String(res.status));
+  if (!res.ok) throw new HttpError(res.status);
   const text = await res.text();
   return (text ? JSON.parse(text) : null) as T;
 }
@@ -53,5 +60,20 @@ export const getAccounts = (structureId: string, from: string, frequency: Freque
 
 export const getAccess = (structureId: string, from: string, frequency: Frequency = 'month'): Promise<AccessRow[]> =>
   getIndicator<AccessRow>('access', structureId, from, frequency);
+
+/** Modes d'export CSV (mêmes que l'AngularJS : `export.service.ts`). */
+export type ExportMode = 'aggregated' | 'substructures' | 'structure' | 'classes';
+
+/**
+ * URL d'export CSV d'un indicateur, avec les paramètres attendus par `GET /stats/export` (cf. `StatsController`).
+ * Ex. mode « classes » → `…&entityLevel=structure&entity=<id>&structureClasses=true`.
+ */
+export function exportUrl(indicator: 'accounts' | 'access', mode: ExportMode, structureId: string, from: string, frequency: Frequency): string {
+  const params = new URLSearchParams({ indicator, from, frequency, entityLevel: 'structure', entity: structureId });
+  if (mode === 'aggregated') params.set('accumulate', 'true');
+  if (mode === 'substructures') params.set('substructures', 'true');
+  if (mode === 'classes') params.set('structureClasses', 'true');
+  return `/stats/export?${params.toString()}`;
+}
 
 export const api = { getStructures, getAccounts, getAccess };

@@ -4,14 +4,16 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 
-import { api, Frequency } from '../api';
-import { accessByModule, accountsByProfile, formatInt, kpis, profileLabel, yearStart } from '../utils';
+import { api, exportUrl, ExportMode, Frequency, HttpError } from '../api';
+import { dateLocale } from '../locale';
+import { accessByModule, accountsByProfile, formatInt, kpis, profileLabel, rollingYearStart } from '../utils';
 
 /** Tableau de bord Statistiques : établissement + comptes par profil + accès par module. */
 export function Dashboard() {
   const { t } = useTranslation(['stats', 'common']);
   const { user, init } = useEdificeClient();
-  const from = yearStart(new Date());
+  const from = rollingYearStart(new Date());
+  const [exportMode, setExportMode] = useState<ExportMode>('structure');
   const [frequency, setFrequency] = useState<Frequency>('month');
   // Choix explicite de l'utilisateur, sinon sa structure de rattachement : nécessaire pour
   // les profils Collectivité/ADML, dont /stats/structures peut renvoyer plusieurs
@@ -34,6 +36,25 @@ export function Dashboard() {
   const maxAccess = modules[0]?.total ?? 0;
   const k = useMemo(() => kpis(accountsQuery.data ?? [], accessQuery.data ?? []), [accountsQuery.data, accessQuery.data]);
 
+  // Un refus (401/403) n'est pas une panne : message dédié ; sinon message générique. Avant, les deux
+  // s'affichaient comme « aucune donnée ».
+  const failure = [structuresQuery, accountsQuery, accessQuery].find((q) => q.isError);
+  const forbidden = failure?.error instanceof HttpError && (failure.error.status === 401 || failure.error.status === 403);
+  const errorBox = failure ? (
+    <div className="alert alert-warning d-flex justify-content-between align-items-center" role="alert" data-stats-error>
+      <span>
+        {forbidden
+          ? t('stats.error.forbidden', { defaultValue: "Vous n'avez pas accès aux statistiques de cet établissement." })
+          : t('stats.error.load', { defaultValue: 'Impossible de charger les statistiques pour le moment.' })}
+      </span>
+      {!forbidden && (
+        <button type="button" className="btn btn-sm btn-secondary" onClick={() => [structuresQuery, accountsQuery, accessQuery].filter((q) => q.isError).forEach((q) => q.refetch())}>
+          {t('stats.error.retry', { defaultValue: 'Réessayer' })}
+        </button>
+      )}
+    </div>
+  ) : null;
+
   if (init && !structureId) {
     return (
       <div>
@@ -48,12 +69,13 @@ export function Dashboard() {
   return (
     <div>
       <h1 className="mb-8">{t('stats.title', { defaultValue: 'Statistiques' })}</h1>
+      {errorBox}
       <div className="d-flex justify-content-between align-items-end flex-wrap gap-8 mb-16">
         {structure && (
           <p className="text-muted mb-0">
             {structure.name}
             {structure.classes ? ` · ${structure.classes.length} ${t('stats.classes', { defaultValue: 'classe(s)' })}` : ''}
-            {` · ${t('stats.since', { defaultValue: 'depuis le' })} ${from}`}
+            {` · ${t('stats.since', { defaultValue: 'depuis le' })} ${new Date(`${from}T00:00:00`).toLocaleDateString(dateLocale())}`}
           </p>
         )}
         <div className="d-flex gap-8 flex-wrap">
@@ -80,6 +102,29 @@ export function Dashboard() {
               <option value="month">{t('stats.freq.month', { defaultValue: 'Mois' })}</option>
             </select>
           </div>
+          <div>
+            <label htmlFor="stats-export-mode" className="form-label">{t('stats.export.mode', { defaultValue: 'Export CSV' })}</label>
+            <div className="d-flex gap-8">
+              <select id="stats-export-mode" className="form-select" value={exportMode} onChange={(e) => setExportMode(e.target.value as ExportMode)}>
+                <option value="structure">{t('stats.export.structure', { defaultValue: "Cet établissement" })}</option>
+                <option value="classes">{t('stats.export.classes', { defaultValue: 'Classes de l\'établissement' })}</option>
+                <option value="substructures">{t('stats.export.substructures', { defaultValue: 'Sous-structures' })}</option>
+                <option value="aggregated">{t('stats.export.aggregated', { defaultValue: 'Données agrégées' })}</option>
+              </select>
+              {(['accounts', 'access'] as const).map((ind) => (
+                <a
+                  key={ind}
+                  className={`btn btn-secondary text-nowrap${structureId ? '' : ' disabled'}`}
+                  href={structureId ? exportUrl(ind, exportMode, structureId, from, frequency) : undefined}
+                  data-export={ind}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {ind === 'accounts' ? t('stats.export.accounts', { defaultValue: 'Connexions' }) : t('stats.export.access', { defaultValue: 'Accès' })}
+                </a>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -87,7 +132,7 @@ export function Dashboard() {
       <div className="d-flex gap-16 flex-wrap mb-16">
         {[
           { k: 'kpi-auth', label: t('stats.kpi.auth', { defaultValue: 'Connexions' }), value: k.totalAuth },
-          { k: 'kpi-visitors', label: t('stats.kpi.visitors', { defaultValue: 'Visiteurs uniques' }), value: k.visitors },
+          { k: 'kpi-visitors', label: t('stats.kpi.visitors', { defaultValue: 'Visiteurs uniques (cumul des périodes)' }), value: k.visitors },
           { k: 'kpi-access', label: t('stats.kpi.access', { defaultValue: 'Accès applications' }), value: k.totalAccess },
           { k: 'kpi-apps', label: t('stats.kpi.apps', { defaultValue: 'Applications utilisées' }), value: k.apps },
         ].map((c) => (
@@ -103,7 +148,7 @@ export function Dashboard() {
         <section className="card p-16 flex-grow-1" style={{ minWidth: 340 }}>
           <h2 style={{ fontSize: 18 }} className="mb-12">{t('stats.accounts', { defaultValue: 'Comptes & connexions par profil' })}</h2>
           {accountsQuery.isLoading && <p>{t('stats.loading', { defaultValue: 'Chargement…' })}</p>}
-          {!accountsQuery.isLoading && profiles.length === 0 && (
+          {!accountsQuery.isLoading && !accountsQuery.isError && profiles.length === 0 && (
             <p className="text-muted">{t('stats.accounts.empty', { defaultValue: 'Aucune donnée de connexion.' })}</p>
           )}
           {profiles.length > 0 && (
@@ -119,10 +164,10 @@ export function Dashboard() {
               <tbody>
                 {profiles.map((p) => (
                   <tr key={p.profile}>
-                    <td>{profileLabel(p.profile)}</td>
-                    <td className="text-end">{p.authentications}</td>
-                    <td className="text-end">{p.uniqueVisitors}</td>
-                    <td className="text-end">{p.activated}</td>
+                    <td>{t(`stats.profile.${p.profile}`, { defaultValue: profileLabel(p.profile) })}</td>
+                    <td className="text-end">{formatInt(p.authentications)}</td>
+                    <td className="text-end">{formatInt(p.uniqueVisitors)}</td>
+                    <td className="text-end">{formatInt(p.activated)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -134,7 +179,7 @@ export function Dashboard() {
         <section className="card p-16 flex-grow-1" style={{ minWidth: 340 }}>
           <h2 style={{ fontSize: 18 }} className="mb-12">{t('stats.access', { defaultValue: 'Accès par application' })}</h2>
           {accessQuery.isLoading && <p>{t('stats.loading', { defaultValue: 'Chargement…' })}</p>}
-          {!accessQuery.isLoading && modules.length === 0 && (
+          {!accessQuery.isLoading && !accessQuery.isError && modules.length === 0 && (
             <p className="text-muted">{t('stats.access.empty', { defaultValue: 'Aucune donnée d\'accès.' })}</p>
           )}
           {modules.length > 0 && (
@@ -142,8 +187,8 @@ export function Dashboard() {
               {modules.map((m) => (
                 <li key={m.module} className="py-4 border-bottom">
                   <div className="d-flex justify-content-between">
-                    <span>{m.module}</span>
-                    <span className="text-muted">{m.total}</span>
+                    <span>{t(`stats.module.${m.module}`, { defaultValue: m.module })}</span>
+                    <span className="text-muted">{formatInt(m.total)}</span>
                   </div>
                   {/* Barre proportionnelle (accessibilité : valeur textuelle ci-dessus) */}
                   <div aria-hidden="true" style={{ height: 6, background: '#e9ecef', borderRadius: 3, marginTop: 4 }}>

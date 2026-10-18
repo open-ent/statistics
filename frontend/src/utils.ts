@@ -15,37 +15,54 @@ export function accessByModule(rows: AccessRow[]): Array<{ module: string; total
     .sort((a, b) => b.total - a.total);
 }
 
-/** Agrège les comptes par profil (sommes des indicateurs), trié par authentifications décroissantes. */
+/**
+ * Agrège les comptes par profil, trié par connexions décroissantes. Connexions et visiteurs sont SOMMÉS sur les
+ * périodes ; « activés » est un STOCK de comptes (pas un flux) : on retient sa valeur de la période la plus récente
+ * (sommer des mois donnerait un total surévalué).
+ */
 export function accountsByProfile(
   rows: AccountRow[],
 ): Array<{ profile: string; authentications: number; uniqueVisitors: number; activated: number }> {
-  const agg = new Map<string, { authentications: number; uniqueVisitors: number; activated: number }>();
+  const agg = new Map<string, { authentications: number; uniqueVisitors: number; activated: number; lastDate: string }>();
   for (const r of rows) {
     const p = r.profile || '—';
-    const cur = agg.get(p) ?? { authentications: 0, uniqueVisitors: 0, activated: 0 };
+    const cur = agg.get(p) ?? { authentications: 0, uniqueVisitors: 0, activated: 0, lastDate: '' };
     cur.authentications += r.authentications ?? 0;
     cur.uniqueVisitors += r.unique_visitors ?? 0;
-    cur.activated += r.activated ?? 0;
+    if (r.activated !== undefined && String(r.date) >= cur.lastDate) {
+      cur.activated = r.activated;
+      cur.lastDate = String(r.date);
+    }
     agg.set(p, cur);
   }
   return [...agg.entries()]
-    .map(([profile, v]) => ({ profile, ...v }))
+    .map(([profile, v]) => ({ profile, authentications: v.authentications, uniqueVisitors: v.uniqueVisitors, activated: v.activated }))
     .sort((a, b) => b.authentications - a.authentications);
 }
 
-/** Traduit un identifiant de profil ENT en libellé FR. */
+/** Libellés FR par défaut des profils ; la traduction vient des clés `stats.profile.<Profil>`. */
+export const PROFILE_DEFAULTS: Record<string, string> = {
+  Teacher: 'Enseignants',
+  Student: 'Élèves',
+  Relative: 'Parents',
+  Personnel: 'Personnels',
+  Guest: 'Invités',
+};
+
+/** Libellé FR d'un identifiant de profil ENT (repli quand aucune traduction n'est fournie). */
 export function profileLabel(profile: string): string {
-  const map: Record<string, string> = {
-    Teacher: 'Enseignants',
-    Student: 'Élèves',
-    Relative: 'Parents',
-    Personnel: 'Personnels',
-    Guest: 'Invités',
-  };
-  return map[profile] ?? profile;
+  return PROFILE_DEFAULTS[profile] ?? profile;
 }
 
-/** Date « YYYY-MM-DD » du 1er janvier de l'année d'une Date (borne `from` par défaut). */
+/**
+ * Borne `from` par défaut : 12 mois glissants, depuis le 1er du mois de l'an dernier (comme l'AngularJS).
+ * Ex. le 18/10/2026 → « 2025-10-01 ». Depuis le 1er janvier, janvier n'aurait montré presque rien.
+ */
+export function rollingYearStart(d: Date): string {
+  return `${d.getFullYear() - 1}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+}
+
+/** Date « YYYY-MM-DD » du 1er janvier de l'année d'une Date. */
 export function yearStart(d: Date): string {
   return `${d.getFullYear()}-01-01`;
 }

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import type { AccessRow, AccountRow } from './api';
-import { accessByModule, accountsByProfile, formatInt, kpis, profileLabel, yearStart } from './utils';
+import { exportUrl } from './api';
+import { accessByModule, accountsByProfile, formatInt, kpis, profileLabel, rollingYearStart, yearStart } from './utils';
 
 describe('accessByModule', () => {
   it('agrège par module et trie décroissant', () => {
@@ -28,7 +29,8 @@ describe('accountsByProfile', () => {
       { date: '2026-06', profile: 'Student', authentications: 10, unique_visitors: 2, activated: 3 },
     ];
     const out = accountsByProfile(rows);
-    expect(out[0]).toEqual({ profile: 'Teacher', authentications: 587, uniqueVisitors: 2, activated: 2 });
+    // « activés » = stock : valeur de la période la plus récente (1), pas la somme des périodes.
+    expect(out[0]).toEqual({ profile: 'Teacher', authentications: 587, uniqueVisitors: 2, activated: 1 });
     expect(out[1].profile).toBe('Student');
   });
 });
@@ -66,5 +68,24 @@ describe('formatInt', () => {
   it('formate avec séparateur de milliers FR', () => {
     expect(formatInt(1234).replace(/ | /g, ' ')).toBe('1 234');
     expect(formatInt(7)).toBe('7');
+  });
+});
+
+describe('rollingYearStart', () => {
+  it('12 mois glissants depuis le 1er du mois de l\'an dernier', () => {
+    expect(rollingYearStart(new Date(2026, 9, 18))).toBe('2025-10-01');
+    expect(rollingYearStart(new Date(2026, 0, 5))).toBe('2025-01-01');
+  });
+});
+
+describe('exportUrl', () => {
+  it('établissement seul', () => {
+    const u = new URL('http://x' + exportUrl('accounts', 'structure', 's1', '2025-10-01', 'month'));
+    expect(Object.fromEntries(u.searchParams)).toEqual({ indicator: 'accounts', from: '2025-10-01', frequency: 'month', entityLevel: 'structure', entity: 's1' });
+  });
+  it('agrégé, sous-structures et classes ajoutent leur drapeau', () => {
+    expect(exportUrl('access', 'aggregated', 's1', 'f', 'day')).toContain('accumulate=true');
+    expect(exportUrl('access', 'substructures', 's1', 'f', 'day')).toContain('substructures=true');
+    expect(exportUrl('access', 'classes', 's1', 'f', 'day')).toContain('structureClasses=true');
   });
 });

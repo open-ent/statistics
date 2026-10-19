@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { AccessRow, AccountRow } from './api';
 import { exportUrl } from './api';
-import { accessByModule, accountsByProfile, formatInt, kpis, profileLabel, rollingYearStart, yearStart } from './utils';
+import { accessByModule, accountsByProfile, periodLabel, seriesMax, timeSeries, formatInt, kpis, profileLabel, rollingYearStart, yearStart } from './utils';
 
 describe('accessByModule', () => {
   it('agrège par module et trie décroissant', () => {
@@ -87,5 +87,32 @@ describe('exportUrl', () => {
     expect(exportUrl('access', 'aggregated', 's1', 'f', 'day')).toContain('accumulate=true');
     expect(exportUrl('access', 'substructures', 's1', 'f', 'day')).toContain('substructures=true');
     expect(exportUrl('access', 'classes', 's1', 'f', 'day')).toContain('structureClasses=true');
+  });
+});
+
+describe('timeSeries', () => {
+  it('additionne les profils d\'une même période et trie par date', () => {
+    const rows: AccountRow[] = [
+      { date: '2026-07', profile: 'Teacher', authentications: 5, unique_visitors: 2 },
+      { date: '2026-06', profile: 'Teacher', authentications: 10, unique_visitors: 3 },
+      { date: '2026-06', profile: 'Student', authentications: 20, unique_visitors: 4 },
+    ];
+    expect(timeSeries(rows, 'authentications')).toEqual([{ date: '2026-06', value: 30 }, { date: '2026-07', value: 5 }]);
+    expect(timeSeries(rows, 'unique_visitors')[0].value).toBe(7);
+  });
+  it('ignore les lignes sans date', () => {
+    expect(timeSeries([{ date: '', profile: 'x', authentications: 3 } as AccountRow], 'authentications')).toEqual([]);
+  });
+});
+
+describe('periodLabel / seriesMax', () => {
+  it('mois, jour, valeur inconnue', () => {
+    expect(periodLabel('2025-10')).toMatch(/oct\.? 2025/);
+    expect(periodLabel('2026-10-17')).toBe('17/10');
+    expect(periodLabel('2025-W42')).toBe('2025-W42');
+  });
+  it('maximum jamais nul', () => {
+    expect(seriesMax([])).toBe(1);
+    expect(seriesMax([{ date: 'a', value: 12 }, { date: 'b', value: 4 }])).toBe(12);
   });
 });

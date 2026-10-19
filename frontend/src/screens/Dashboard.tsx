@@ -5,8 +5,9 @@ import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 
 import { api, exportUrl, ExportMode, Frequency, HttpError } from '../api';
+import { BarChart } from '../components/BarChart';
 import { dateLocale } from '../locale';
-import { accessByModule, accountsByProfile, formatInt, kpis, profileLabel, rollingYearStart } from '../utils';
+import { accessByModule, accountsByProfile, formatInt, kpis, profileLabel, rollingYearStart, timeSeries } from '../utils';
 
 /** Tableau de bord Statistiques : établissement + comptes par profil + accès par module. */
 export function Dashboard() {
@@ -34,6 +35,8 @@ export function Dashboard() {
   const profiles = useMemo(() => accountsByProfile(accountsQuery.data ?? []), [accountsQuery.data]);
   const modules = useMemo(() => accessByModule(accessQuery.data ?? []), [accessQuery.data]);
   const maxAccess = modules[0]?.total ?? 0;
+  const connectionsSeries = useMemo(() => timeSeries(accountsQuery.data ?? [], 'authentications'), [accountsQuery.data]);
+  const visitorsSeries = useMemo(() => timeSeries(accountsQuery.data ?? [], 'unique_visitors'), [accountsQuery.data]);
   const k = useMemo(() => kpis(accountsQuery.data ?? [], accessQuery.data ?? []), [accountsQuery.data, accessQuery.data]);
 
   // Un refus (401/403) n'est pas une panne : message dédié ; sinon message générique. Avant, les deux
@@ -142,6 +145,20 @@ export function Dashboard() {
           </div>
         ))}
       </div>
+
+      {/* Évolution dans le temps : la granularité choisie ci-dessus s'y applique (elle n'avait aucun effet visuel). */}
+      {(connectionsSeries.length > 0 || visitorsSeries.length > 0) && (
+        <div className="d-flex gap-16 flex-wrap mb-16">
+          <section className="card p-16 flex-grow-1" style={{ minWidth: 340 }} data-stats-series="connexions">
+            <h2 style={{ fontSize: 18 }} className="mb-12">{t('stats.chart.connections', { defaultValue: 'Connexions par période' })}</h2>
+            <BarChart points={connectionsSeries} label={t('stats.chart.connections', { defaultValue: 'Connexions par période' })} />
+          </section>
+          <section className="card p-16 flex-grow-1" style={{ minWidth: 340 }} data-stats-series="visiteurs">
+            <h2 style={{ fontSize: 18 }} className="mb-12">{t('stats.chart.visitors', { defaultValue: 'Visiteurs uniques par période' })}</h2>
+            <BarChart points={visitorsSeries} color="#8e44ad" label={t('stats.chart.visitors', { defaultValue: 'Visiteurs uniques par période' })} />
+          </section>
+        </div>
+      )}
 
       <div className="d-flex gap-16 flex-wrap align-items-start">
         {/* Comptes par profil */}

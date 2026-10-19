@@ -82,3 +82,37 @@ export function kpis(accounts: AccountRow[], access: AccessRow[]): {
 export function formatInt(n: number): string {
   return n.toLocaleString(dateLocale());
 }
+
+/** Un point d'une série temporelle : période (telle que renvoyée par l'API) et valeur sommée sur tous les profils. */
+export interface SeriesPoint {
+  date: string;
+  value: number;
+}
+
+/**
+ * Série d'un champ des lignes « accounts » : somme de toutes les lignes d'une même période (tous profils confondus),
+ * triée par période croissante. Ex. connexions des enseignants et des élèves de juin additionnées en un point « 2026-06 ».
+ */
+export function timeSeries(rows: AccountRow[], field: 'authentications' | 'unique_visitors'): SeriesPoint[] {
+  const agg = new Map<string, number>();
+  for (const r of rows) {
+    if (!r.date) continue;
+    agg.set(String(r.date), (agg.get(String(r.date)) ?? 0) + (r[field] ?? 0));
+  }
+  return [...agg.entries()].map(([date, value]) => ({ date, value })).sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/**
+ * Libellé court d'une période pour l'axe : mois « oct. 2025 », jour « 17/10 », semaine « 2025-W42 » inchangée.
+ * Une période non reconnue est renvoyée telle quelle.
+ */
+export function periodLabel(date: string, locale = 'fr-FR'): string {
+  const month = /^(\d{4})-(\d{2})$/.exec(date);
+  if (month) return new Date(Number(month[1]), Number(month[2]) - 1, 1).toLocaleDateString(locale, { month: 'short', year: 'numeric' });
+  const day = /^(\d{4})-(\d{2})-(\d{2})/.exec(date);
+  if (day) return new Date(Number(day[1]), Number(day[2]) - 1, Number(day[3])).toLocaleDateString(locale, { day: '2-digit', month: '2-digit' });
+  return date;
+}
+
+/** Plus grande valeur d'une série (1 au minimum, pour ne jamais diviser par zéro). */
+export const seriesMax = (points: SeriesPoint[]): number => Math.max(1, ...points.map((p) => p.value));

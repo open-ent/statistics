@@ -187,34 +187,40 @@ public class Stats extends BaseServer {
 		// Index the stats collection on the criteria used by the nightly aggregation upserts
 		// (IndicatorMongoImpl.writeStats). Without it each of the ~thousands of upserts does a
 		// full collection scan, saturating MongoDB and triggering connection/reply timeouts.
-		ensureStatsIndexes(COLLECTIONS.stats.name());
+		ensureIndex(COLLECTIONS.stats.name(), "stats_aggregation_idx", new JsonObject()
+				.put("date", 1)
+				.put("groupedBy", 1)
+				.put("structures_id", 1)
+				.put("classes_id", 1)
+				.put("profil_id", 1)
+				.put("module_id", 1));
+		// Index the events collection on the $match of every aggregation pipeline
+		// (IndicatorMongoImpl: event-type equality + date range). Without it each of the ~200 nightly
+		// aggregations scans the whole collection.
+		ensureIndex(COLLECTIONS.events.name(), "events_type_date_idx", new JsonObject()
+				.put("event-type", 1)
+				.put("date", 1));
 
 		return Future.succeededFuture();
 	}
 
 	/**
-	 * Idempotently create the compound index used by the aggregation write path.
+	 * Idempotently create an index used by the aggregation.
 	 * Re-running with the same specification is a no-op on MongoDB.
 	 */
-	private void ensureStatsIndexes(final String collection) {
+	private void ensureIndex(final String collection, final String name, final JsonObject keys) {
 		final JsonObject index = new JsonObject()
-				.put("key", new JsonObject()
-						.put("date", 1)
-						.put("groupedBy", 1)
-						.put("structures_id", 1)
-						.put("classes_id", 1)
-						.put("profil_id", 1)
-						.put("module_id", 1))
-				.put("name", "stats_aggregation_idx")
+				.put("key", keys)
+				.put("name", name)
 				.put("background", true);
 		final JsonObject command = new JsonObject()
 				.put("createIndexes", collection)
 				.put("indexes", new JsonArray().add(index));
 		MongoDb.getInstance().command(command.encode(), (Message<JsonObject> message) -> {
 			if (!"ok".equals(message.body().getString("status"))) {
-				logger.error("[Stats] Failed to ensure stats_aggregation_idx : " + message.body().encode());
+				logger.error("[Stats] Failed to ensure " + name + " : " + message.body().encode());
 			} else {
-				logger.info("[Stats] stats_aggregation_idx ensured on collection " + collection);
+				logger.info("[Stats] " + name + " ensured on collection " + collection);
 			}
 		});
 	}

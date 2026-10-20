@@ -31,7 +31,6 @@ import org.entcore.common.aggregation.AggregationTools;
 import org.entcore.common.aggregation.AggregationTools.HandlerChainer;
 import org.entcore.common.aggregation.MongoConstants.COLLECTIONS;
 import org.entcore.common.aggregation.filters.IndicatorFilter;
-import org.entcore.common.aggregation.filters.mongo.DateFilter;
 import org.entcore.common.aggregation.groups.IndicatorGroup;
 import org.entcore.common.aggregation.indicators.Indicator;
 import org.entcore.common.aggregation.indicators.mongo.IndicatorMongoImpl;
@@ -43,7 +42,9 @@ import io.vertx.core.json.JsonObject;
 import static org.entcore.common.aggregation.MongoConstants.*;
 import fr.wseduc.mongodb.MongoDb;
 import fr.wseduc.mongodb.MongoQueryBuilder;
+import fr.wseduc.stats.aggregation.Indicators.DateFilteredIndicator;
 import fr.wseduc.stats.aggregation.Indicators.UniqueVisitorIndicator;
+import fr.wseduc.stats.aggregation.filters.DateRangeFilter;
 import static com.mongodb.client.model.Filters.*;
 
 /**
@@ -73,14 +74,14 @@ public class DailyAggregationProcessing extends AggregationProcessing{
 	}
 
 	private IndicatorMongoImpl createHourPeakIndicator(final Date day, int hour){
-		IndicatorMongoImpl hourPeakIndicator = new IndicatorMongoImpl(TRACE_TYPE_CONNEXION);
+		IndicatorMongoImpl hourPeakIndicator = new DateFilteredIndicator(TRACE_TYPE_CONNEXION);
 		Calendar calendarDay = Calendar.getInstance();
 		calendarDay.setTime(day);
 		final Date lowerHour = AggregationTools.setHourTo(calendarDay, hour);
 		final Date higherHour = AggregationTools.setHourTo(calendarDay, hour+1);
 
 		hourPeakIndicator.setWriteKey(TRACE_TYPE_CONNEXION+"_H"+hour);
-		hourPeakIndicator.addFilter(new DateFilter(lowerHour, higherHour));
+		hourPeakIndicator.addFilter(new DateRangeFilter(lowerHour, higherHour));
 
 		return hourPeakIndicator;
 	}
@@ -92,7 +93,7 @@ public class DailyAggregationProcessing extends AggregationProcessing{
 		calendarDay.add(Calendar.DATE, 1);
 		Date higherDay = AggregationTools.setToMidnight(calendarDay);
 
-		IndicatorFilter dayFilter = new DateFilter(lowerDay, higherDay);
+		IndicatorFilter dayFilter = new DateRangeFilter(lowerDay, higherDay);
 
 		i.addFilter(dayFilter);
 	}
@@ -103,7 +104,7 @@ public class DailyAggregationProcessing extends AggregationProcessing{
 		/// SET INDICATORS HERE & ADD THEM TO THE ARRAY LIST
 
 		//Connexions
-		IndicatorMongoImpl connexionIndicator = new IndicatorMongoImpl(TRACE_TYPE_CONNEXION);
+		IndicatorMongoImpl connexionIndicator = new DateFilteredIndicator(TRACE_TYPE_CONNEXION);
 		//Connexion hour peaks
 		IndicatorMongoImpl[] hourPeakIndicators = new IndicatorMongoImpl[24];
 		for(int i = 0; i < 24; i++){
@@ -111,9 +112,9 @@ public class DailyAggregationProcessing extends AggregationProcessing{
 		}
 
 		//Account creation, deletion & activation
-		IndicatorMongoImpl userCreationIndicator = new IndicatorMongoImpl(TRACE_TYPE_CREATE_USER);
-		IndicatorMongoImpl userDeletionIndicator = new IndicatorMongoImpl(TRACE_TYPE_DELETE_USER);
-		IndicatorMongoImpl userActivationIndicator = new IndicatorMongoImpl(TRACE_TYPE_ACTIVATION);
+		IndicatorMongoImpl userCreationIndicator = new DateFilteredIndicator(TRACE_TYPE_CREATE_USER);
+		IndicatorMongoImpl userDeletionIndicator = new DateFilteredIndicator(TRACE_TYPE_DELETE_USER);
+		IndicatorMongoImpl userActivationIndicator = new DateFilteredIndicator(TRACE_TYPE_ACTIVATION);
 
 		//Unique visitors
 		IndicatorMongoImpl uniqueVisitorIndicator = new UniqueVisitorIndicator();
@@ -163,7 +164,7 @@ public class DailyAggregationProcessing extends AggregationProcessing{
 		////////////////////////////////////////////////////
 
 		//Add to every indicator a filter to get traces from the first day of the week.
-		IndicatorFilter weeklyFilter = new DateFilter(lowerDay, higherDay);
+		IndicatorFilter weeklyFilter = new DateRangeFilter(lowerDay, higherDay);
 
 		for(Indicator indicator: weekIndicators){
 			indicator.addFilter(weeklyFilter);
@@ -194,7 +195,7 @@ public class DailyAggregationProcessing extends AggregationProcessing{
 		////////////////////////////////////////////////////
 
 		//Add to every indicator a filter to get traces from first day of the month.
-		IndicatorFilter monthlyFilter = new DateFilter(lowerDay, higherDay);
+		IndicatorFilter monthlyFilter = new DateRangeFilter(lowerDay, higherDay);
 
 		for(Indicator indicator: monthlyIndicators){
 			indicator.addFilter(monthlyFilter);
@@ -223,7 +224,7 @@ public class DailyAggregationProcessing extends AggregationProcessing{
 		////////////////////////////////////////////////////
 
 		//Add to every indicator a filter to get traces from september 1
-		IndicatorFilter septemberFilter = new DateFilter(september, higherDay);
+		IndicatorFilter septemberFilter = new DateRangeFilter(september, higherDay);
 
 		for(Indicator indicator: septemberIndicators){
 			indicator.addFilter(septemberFilter);
@@ -289,7 +290,7 @@ public class DailyAggregationProcessing extends AggregationProcessing{
 				}
 
 				///// Special treatment for the service access Indicator : indicator has to be also grouped by module name :
-				IndicatorMongoImpl serviceAccessIndicator = new IndicatorMongoImpl(TRACE_TYPE_SVC_ACCESS);
+				IndicatorMongoImpl serviceAccessIndicator = new DateFilteredIndicator(TRACE_TYPE_SVC_ACCESS);
 
 				//Add day filter
 				addDayFilter(serviceAccessIndicator, day);

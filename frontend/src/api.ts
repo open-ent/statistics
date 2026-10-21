@@ -53,25 +53,28 @@ export const getStructures = async (): Promise<StatStructure[]> =>
 /** Granularité d'agrégation des statistiques. */
 export type Frequency = 'day' | 'week' | 'month';
 
+/** Niveau de l'entité interrogée : l'établissement entier ou une de ses classes. */
+export type EntityLevel = 'structure' | 'class';
+
 /** Indicateur agrégé pour une structure sur une période, à la granularité `frequency`. */
-async function getIndicator<T>(indicator: 'accounts' | 'access', structureId: string, from: string, frequency: Frequency | 'hour', device = false): Promise<T[]> {
-  const url = `/stats/list?indicator=${indicator}&from=${from}&frequency=${frequency}&entityLevel=structure&entity=${structureId}${device ? '&device=true' : ''}`;
+async function getIndicator<T>(indicator: 'accounts' | 'access', structureId: string, from: string, frequency: Frequency | 'hour', device = false, level: EntityLevel = 'structure'): Promise<T[]> {
+  const url = `/stats/list?indicator=${indicator}&from=${from}&frequency=${frequency}&entityLevel=${level}&entity=${structureId}${device ? '&device=true' : ''}`;
   return json<T[]>(await fetch(url, base));
 }
 
-export const getAccounts = (structureId: string, from: string, frequency: Frequency = 'month'): Promise<AccountRow[]> =>
-  getIndicator<AccountRow>('accounts', structureId, from, frequency);
+export const getAccounts = (structureId: string, from: string, frequency: Frequency = 'month', level: EntityLevel = 'structure'): Promise<AccountRow[]> =>
+  getIndicator<AccountRow>('accounts', structureId, from, frequency, false, level);
 
 /** Connexions par type d'appareil (`device=true`) : une ligne par période, profil et appareil. */
-export const getAccountsByDevice = (structureId: string, from: string, frequency: Frequency = 'month'): Promise<AccountRow[]> =>
-  getIndicator<AccountRow>('accounts', structureId, from, frequency, true);
+export const getAccountsByDevice = (structureId: string, from: string, frequency: Frequency = 'month', level: EntityLevel = 'structure'): Promise<AccountRow[]> =>
+  getIndicator<AccountRow>('accounts', structureId, from, frequency, true, level);
 
 /** Connexions à l'heure près (`frequency=hour`) : sert aux pics horaire et hebdomadaire. */
-export const getAccountsHourly = (structureId: string, from: string): Promise<AccountRow[]> =>
-  getIndicator<AccountRow>('accounts', structureId, from, 'hour');
+export const getAccountsHourly = (structureId: string, from: string, level: EntityLevel = 'structure'): Promise<AccountRow[]> =>
+  getIndicator<AccountRow>('accounts', structureId, from, 'hour', false, level);
 
-export const getAccess = (structureId: string, from: string, frequency: Frequency = 'month'): Promise<AccessRow[]> =>
-  getIndicator<AccessRow>('access', structureId, from, frequency);
+export const getAccess = (structureId: string, from: string, frequency: Frequency = 'month', level: EntityLevel = 'structure'): Promise<AccessRow[]> =>
+  getIndicator<AccessRow>('access', structureId, from, frequency, false, level);
 
 /** Modes d'export CSV (mêmes que l'AngularJS : `export.service.ts`). */
 export type ExportMode = 'aggregated' | 'substructures' | 'structure' | 'classes';

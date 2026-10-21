@@ -1,10 +1,10 @@
 import { useEdificeClient } from '@open-ent/react';
 import { useQuery } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 
-import { api, exportUrl, ExportMode, Frequency, HttpError } from '../api';
+import { api, exportUrl, EntityLevel, ExportMode, Frequency, HttpError } from '../api';
 import { BarChart } from '../components/BarChart';
 import { SlotChart } from '../components/SlotChart';
 import { dateLocale, dayLabels } from '../locale';
@@ -29,13 +29,20 @@ export function Dashboard() {
   const structuresQuery = useQuery({ queryKey: ['stats', 'structures'], queryFn: () => api.getStructures() });
   const structuresList = structuresQuery.data ?? [];
   const structureId = selectedStructureId ?? requestedStructureId ?? user?.structures?.[0] ?? structuresList[0]?.id ?? '';
-  const accountsQuery = useQuery({ queryKey: ['stats', 'accounts', structureId, from, frequency], queryFn: () => api.getAccounts(structureId, from, frequency), enabled: !!structureId });
-  const accessQuery = useQuery({ queryKey: ['stats', 'access', structureId, from, frequency], queryFn: () => api.getAccess(structureId, from, frequency), enabled: !!structureId });
+  // Périmètre : tout l'établissement, ou une de ses classes (comme l'AngularJS, niveau « classe »).
+  const [selectedClassId, setSelectedClassId] = useState('');
+  const structureForClasses = structuresList.find((s) => s.id === structureId) ?? structuresList[0];
+  const classes = structureForClasses?.classes ?? [];
+  const classId = classes.some((c) => c.id === selectedClassId) ? selectedClassId : '';
+  const entityId = classId || structureId;
+  const level: EntityLevel = classId ? 'class' : 'structure';
+  const accountsQuery = useQuery({ queryKey: ['stats', 'accounts', level, entityId, from, frequency], queryFn: () => api.getAccounts(entityId, from, frequency, level), enabled: !!structureId });
+  const accessQuery = useQuery({ queryKey: ['stats', 'access', level, entityId, from, frequency], queryFn: () => api.getAccess(entityId, from, frequency, level), enabled: !!structureId });
 
   // Connexions par appareil : requête annexe, son échec masque seulement ce bloc.
-  const devicesQuery = useQuery({ queryKey: ['stats', 'devices', structureId, from, frequency], queryFn: () => api.getAccountsByDevice(structureId, from, frequency), enabled: !!structureId, retry: false });
+  const devicesQuery = useQuery({ queryKey: ['stats', 'devices', level, entityId, from, frequency], queryFn: () => api.getAccountsByDevice(entityId, from, frequency, level), enabled: !!structureId, retry: false });
   // Pics de connexion : requête annexe à l'heure près, son échec masque seulement ces deux blocs.
-  const hourlyQuery = useQuery({ queryKey: ['stats', 'hourly', structureId, from], queryFn: () => api.getAccountsHourly(structureId, from), enabled: !!structureId, retry: false });
+  const hourlyQuery = useQuery({ queryKey: ['stats', 'hourly', level, entityId, from], queryFn: () => api.getAccountsHourly(entityId, from, level), enabled: !!structureId, retry: false });
   const hourly = useMemo(() => dailyPeak(hourlyQuery.data ?? []), [hourlyQuery.data]);
   const weekly = useMemo(() => weeklyPeak(hourlyQuery.data ?? []), [hourlyQuery.data]);
   const hourLabels = useMemo(() => Array.from({ length: 24 }, (_, h) => `${String(h).padStart(2, '0')}h`), []);
@@ -57,6 +64,12 @@ export function Dashboard() {
   // s'affichaient comme « aucune donnée ».
   const failure = [structuresQuery, accountsQuery, accessQuery].find((q) => q.isError);
   const forbidden = failure?.error instanceof HttpError && (failure.error.status === 401 || failure.error.status === 403);
+  // Sans droit sur l'établissement entier (ex. enseignant) mais avec des classes : on bascule d'office
+  // sur la première classe au lieu de n'afficher qu'un refus, comme l'AngularJS.
+  const firstClassId = [...classes].sort((a, b) => a.name.localeCompare(b.name))[0]?.id ?? '';
+  useEffect(() => {
+    if (forbidden && !classId && firstClassId) setSelectedClassId(firstClassId);
+  }, [forbidden, classId, firstClassId]);
   const errorBox = failure ? (
     <div className="alert alert-warning d-flex justify-content-between align-items-center" role="alert" data-stats-error>
       <span>
@@ -103,10 +116,21 @@ export function Dashboard() {
                 id="stats-structure"
                 className="form-select"
                 value={structureId}
-                onChange={(e) => setSelectedStructureId(e.target.value)}
+                onChange={(e) => { setSelectedStructureId(e.target.value); setSelectedClassId(''); }}
               >
                 {structuresList.map((s) => (
                   <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          {classes.length > 0 && (
+            <div>
+              <label htmlFor="stats-class" className="form-label">{t('stats.class', { defaultValue: 'Périmètre' })}</label>
+              <select id="stats-class" className="form-select" value={classId} onChange={(e) => setSelectedClassId(e.target.value)}>
+                <option value="">{t('stats.class.all', { defaultValue: 'Tout l\'établissement' })}</option>
+                {[...classes].sort((a, b) => a.name.localeCompare(b.name)).map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
             </div>

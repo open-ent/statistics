@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { AccessRow, AccountRow } from './api';
 import { exportUrl } from './api';
-import { accessByModule, accountsByProfile, periodLabel, seriesMax, timeSeries, formatInt, kpis, profileLabel, rollingYearStart, yearStart } from './utils';
+import { accessByModule, accountsByProfile, devicesTotals, splitAccess, periodLabel, seriesMax, timeSeries, formatInt, kpis, profileLabel, rollingYearStart, yearStart } from './utils';
 
 describe('accessByModule', () => {
   it('agrège par module et trie décroissant', () => {
@@ -114,5 +114,35 @@ describe('periodLabel / seriesMax', () => {
   it('maximum jamais nul', () => {
     expect(seriesMax([])).toBe(1);
     expect(seriesMax([{ date: 'a', value: 12 }, { date: 'b', value: 4 }])).toBe(12);
+  });
+});
+
+describe('splitAccess', () => {
+  it('sépare applications et connecteurs, écarte « library »', () => {
+    const rows: AccessRow[] = [
+      { date: 'd', profile: 'p', module: 'blog', access: 5, type: 'ACCESS' },
+      { date: 'd', profile: 'p', module: 'gar', access: 2, type: 'CONNECTOR' },
+      { date: 'd', profile: 'p', module: 'library', access: 9, type: 'CONNECTOR' },
+      { date: 'd', profile: 'p', module: 'wiki', access: 1 },
+    ];
+    const { apps, connectors } = splitAccess(rows);
+    expect(apps.map((r) => r.module)).toEqual(['blog', 'wiki']);
+    expect(connectors.map((r) => r.module)).toEqual(['gar']);
+  });
+});
+
+describe('devicesTotals', () => {
+  it('cumule par appareil et trie décroissant', () => {
+    const rows: AccountRow[] = [
+      { date: '2026-09', profile: 'Teacher', authentications: 10, device_type: 'desktop' },
+      { date: '2026-10', profile: 'Teacher', authentications: 5, device_type: 'desktop' },
+      { date: '2026-10', profile: 'Student', authentications: 40, device_type: 'smartphone' },
+      { date: '2026-10', profile: 'Student', authentications: 1 },
+    ];
+    expect(devicesTotals(rows)).toEqual([
+      { device: 'smartphone', total: 40 },
+      { device: 'desktop', total: 15 },
+      { device: 'other', total: 1 },
+    ]);
   });
 });

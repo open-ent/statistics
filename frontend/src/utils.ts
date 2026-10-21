@@ -116,3 +116,23 @@ export function periodLabel(date: string, locale = 'fr-FR'): string {
 
 /** Plus grande valeur d'une série (1 au minimum, pour ne jamais diviser par zéro). */
 export const seriesMax = (points: SeriesPoint[]): number => Math.max(1, ...points.map((p) => p.value));
+
+/**
+ * Sépare les accès « applications » des accès « connecteurs » (champ `type`), comme l'AngularJS : le connecteur
+ * `library` est écarté de la liste des connecteurs. Une ligne sans type compte comme une application.
+ */
+export function splitAccess(rows: AccessRow[]): { apps: AccessRow[]; connectors: AccessRow[] } {
+  const connectors = rows.filter((r) => r.type === 'CONNECTOR' && r.module !== 'library');
+  const apps = rows.filter((r) => r.type !== 'CONNECTOR');
+  return { apps, connectors };
+}
+
+/** Connexions totales par type d'appareil, du plus utilisé au moins utilisé. Ex. smartphone 120, desktop 80. */
+export function devicesTotals(rows: AccountRow[]): Array<{ device: string; total: number }> {
+  const agg = new Map<string, number>();
+  for (const r of rows) {
+    const device = r.device_type || 'other';
+    agg.set(device, (agg.get(device) ?? 0) + (r.authentications ?? 0));
+  }
+  return [...agg.entries()].map(([device, total]) => ({ device, total })).sort((a, b) => b.total - a.total);
+}

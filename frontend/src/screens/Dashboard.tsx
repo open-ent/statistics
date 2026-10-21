@@ -7,7 +7,7 @@ import { useSearchParams } from 'react-router-dom';
 import { api, exportUrl, ExportMode, Frequency, HttpError } from '../api';
 import { BarChart } from '../components/BarChart';
 import { dateLocale } from '../locale';
-import { accessByModule, accountsByProfile, formatInt, kpis, profileLabel, rollingYearStart, timeSeries } from '../utils';
+import { accessByModule, accountsByProfile, formatInt, devicesTotals, kpis, profileLabel, rollingYearStart, splitAccess, timeSeries } from '../utils';
 
 /** Tableau de bord Statistiques : établissement + comptes par profil + accès par module. */
 export function Dashboard() {
@@ -31,13 +31,21 @@ export function Dashboard() {
   const accountsQuery = useQuery({ queryKey: ['stats', 'accounts', structureId, from, frequency], queryFn: () => api.getAccounts(structureId, from, frequency), enabled: !!structureId });
   const accessQuery = useQuery({ queryKey: ['stats', 'access', structureId, from, frequency], queryFn: () => api.getAccess(structureId, from, frequency), enabled: !!structureId });
 
+  // Connexions par appareil : requête annexe, son échec masque seulement ce bloc.
+  const devicesQuery = useQuery({ queryKey: ['stats', 'devices', structureId, from, frequency], queryFn: () => api.getAccountsByDevice(structureId, from, frequency), enabled: !!structureId, retry: false });
+  const devices = useMemo(() => devicesTotals(devicesQuery.data ?? []), [devicesQuery.data]);
+  const maxDevice = devices[0]?.total ?? 0;
+
   const structure = structuresList.find((s) => s.id === structureId) ?? structuresList[0];
   const profiles = useMemo(() => accountsByProfile(accountsQuery.data ?? []), [accountsQuery.data]);
-  const modules = useMemo(() => accessByModule(accessQuery.data ?? []), [accessQuery.data]);
+  const split = useMemo(() => splitAccess(accessQuery.data ?? []), [accessQuery.data]);
+  const modules = useMemo(() => accessByModule(split.apps), [split]);
+  const connectors = useMemo(() => accessByModule(split.connectors), [split]);
+  const maxConnector = connectors[0]?.total ?? 0;
   const maxAccess = modules[0]?.total ?? 0;
   const connectionsSeries = useMemo(() => timeSeries(accountsQuery.data ?? [], 'authentications'), [accountsQuery.data]);
   const visitorsSeries = useMemo(() => timeSeries(accountsQuery.data ?? [], 'unique_visitors'), [accountsQuery.data]);
-  const k = useMemo(() => kpis(accountsQuery.data ?? [], accessQuery.data ?? []), [accountsQuery.data, accessQuery.data]);
+  const k = useMemo(() => kpis(accountsQuery.data ?? [], split.apps), [accountsQuery.data, split]);
 
   // Un refus (401/403) n'est pas une panne : message dédié ; sinon message générique. Avant, les deux
   // s'affichaient comme « aucune donnée ».
@@ -216,6 +224,46 @@ export function Dashboard() {
             </ul>
           )}
         </section>
+
+        {/* Accès par connecteur (ENT → services externes : GAR, Moodle…) */}
+        {connectors.length > 0 && (
+          <section className="card p-16 flex-grow-1" style={{ minWidth: 340 }} data-stats-section="connecteurs">
+            <h2 style={{ fontSize: 18 }} className="mb-12">{t('stats.connectors', { defaultValue: 'Accès par connecteur' })}</h2>
+            <ul className="list-unstyled mb-0">
+              {connectors.map((c) => (
+                <li key={c.module} className="py-4 border-bottom">
+                  <div className="d-flex justify-content-between">
+                    <span>{c.module}</span>
+                    <span className="text-muted">{formatInt(c.total)}</span>
+                  </div>
+                  <div aria-hidden="true" style={{ height: 6, background: '#e9ecef', borderRadius: 3, marginTop: 4 }}>
+                    <div style={{ height: 6, width: `${maxConnector ? Math.round((c.total / maxConnector) * 100) : 0}%`, background: '#8e44ad', borderRadius: 3 }} />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {/* Connexions par appareil */}
+        {devices.length > 0 && (
+          <section className="card p-16 flex-grow-1" style={{ minWidth: 340 }} data-stats-section="appareils">
+            <h2 style={{ fontSize: 18 }} className="mb-12">{t('stats.devices.logins', { defaultValue: 'Connexions par appareil' })}</h2>
+            <ul className="list-unstyled mb-0">
+              {devices.map((d) => (
+                <li key={d.device} className="py-4 border-bottom">
+                  <div className="d-flex justify-content-between">
+                    <span>{t(`stats.device.${d.device}`, { defaultValue: d.device })}</span>
+                    <span className="text-muted">{formatInt(d.total)}</span>
+                  </div>
+                  <div aria-hidden="true" style={{ height: 6, background: '#e9ecef', borderRadius: 3, marginTop: 4 }}>
+                    <div style={{ height: 6, width: `${maxDevice ? Math.round((d.total / maxDevice) * 100) : 0}%`, background: '#e67e22', borderRadius: 3 }} />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
       </div>
     </div>
   );

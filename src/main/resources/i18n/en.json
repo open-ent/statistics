@@ -159,5 +159,7 @@
   "stats.profile.Personnel": "Staff",
   "stats.profile.Guest": "Guests",
   "stats.chart.connections": "Logins per period",
-  "stats.chart.visitors": "Unique visitors per period"
+  "stats.chart.visitors": "Unique visitors per period",
+  "stats.connectors": "Accesses by connector",
+  "stats.devices.logins": "Logins by device"
 }

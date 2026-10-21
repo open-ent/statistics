@@ -12,6 +12,8 @@ export interface AccountRow {
   date: string;
   profile: string;
   authentications?: number;
+  /** Type d'appareil, seulement quand la requête porte `device=true` (desktop, smartphone, mobile_app, other). */
+  device_type?: string;
   unique_visitors?: number;
   activated?: number;
   activations?: number;
@@ -25,6 +27,8 @@ export interface AccessRow {
   module: string;
   access?: number;
   unique_access?: number;
+  /** `ACCESS` (application) ou `CONNECTOR` (connecteur externe) — comme les filtres de l'AngularJS. */
+  type?: string;
 }
 
 /** Erreur HTTP typée : le code distingue « pas de droit » (401/403) d'une panne. */
@@ -50,13 +54,17 @@ export const getStructures = async (): Promise<StatStructure[]> =>
 export type Frequency = 'day' | 'week' | 'month';
 
 /** Indicateur agrégé pour une structure sur une période, à la granularité `frequency`. */
-async function getIndicator<T>(indicator: 'accounts' | 'access', structureId: string, from: string, frequency: Frequency): Promise<T[]> {
-  const url = `/stats/list?indicator=${indicator}&from=${from}&frequency=${frequency}&entityLevel=structure&entity=${structureId}`;
+async function getIndicator<T>(indicator: 'accounts' | 'access', structureId: string, from: string, frequency: Frequency, device = false): Promise<T[]> {
+  const url = `/stats/list?indicator=${indicator}&from=${from}&frequency=${frequency}&entityLevel=structure&entity=${structureId}${device ? '&device=true' : ''}`;
   return json<T[]>(await fetch(url, base));
 }
 
 export const getAccounts = (structureId: string, from: string, frequency: Frequency = 'month'): Promise<AccountRow[]> =>
   getIndicator<AccountRow>('accounts', structureId, from, frequency);
+
+/** Connexions par type d'appareil (`device=true`) : une ligne par période, profil et appareil. */
+export const getAccountsByDevice = (structureId: string, from: string, frequency: Frequency = 'month'): Promise<AccountRow[]> =>
+  getIndicator<AccountRow>('accounts', structureId, from, frequency, true);
 
 export const getAccess = (structureId: string, from: string, frequency: Frequency = 'month'): Promise<AccessRow[]> =>
   getIndicator<AccessRow>('access', structureId, from, frequency);
@@ -76,4 +84,4 @@ export function exportUrl(indicator: 'accounts' | 'access', mode: ExportMode, st
   return `/stats/export?${params.toString()}`;
 }
 
-export const api = { getStructures, getAccounts, getAccess };
+export const api = { getStructures, getAccounts, getAccess, getAccountsByDevice };

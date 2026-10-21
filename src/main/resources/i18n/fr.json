@@ -160,5 +160,7 @@
   "stats.profile.Personnel": "Personnels",
   "stats.profile.Guest": "Invités",
   "stats.chart.connections": "Connexions par période",
-  "stats.chart.visitors": "Visiteurs uniques par période"
+  "stats.chart.visitors": "Visiteurs uniques par période",
+  "stats.connectors": "Accès par connecteur",
+  "stats.devices.logins": "Connexions par appareil"
 }

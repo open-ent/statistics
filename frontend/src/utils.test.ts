@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { AccessRow, AccountRow } from './api';
 import { exportUrl } from './api';
-import { accessByModule, accountsByProfile, devicesTotals, splitAccess, periodLabel, seriesMax, timeSeries, formatInt, kpis, profileLabel, rollingYearStart, yearStart } from './utils';
+import { dailyPeak, weeklyPeak, accessByModule, accountsByProfile, devicesTotals, splitAccess, periodLabel, seriesMax, timeSeries, formatInt, kpis, profileLabel, rollingYearStart, yearStart } from './utils';
 
 describe('accessByModule', () => {
   it('agrège par module et trie décroissant', () => {
@@ -144,5 +144,31 @@ describe('devicesTotals', () => {
       { device: 'desktop', total: 15 },
       { device: 'other', total: 1 },
     ]);
+  });
+});
+
+describe('dailyPeak / weeklyPeak', () => {
+  const rows: AccountRow[] = [
+    { date: '2026-10-19T08:00:00', profile: 'Teacher', authentications: 10 },
+    { date: '2026-10-19T08:00:00', profile: 'Student', authentications: 5 },
+    { date: '2026-10-20T13:00:00', profile: 'Student', authentications: 7 },
+    { date: '2026-10-25T13:00:00', profile: 'Student', authentications: 1 },
+  ];
+  it('pic horaire : additionne tous les profils par heure', () => {
+    const r = dailyPeak(rows);
+    expect(r.values[8]).toBe(15);
+    expect(r.values[13]).toBe(8);
+    expect(r.peak).toBe(8);
+  });
+  it('pic hebdomadaire : lundi = 0, dimanche = 6', () => {
+    const r = weeklyPeak(rows);
+    expect(r.values[0]).toBe(15); // lundi 19/10
+    expect(r.values[1]).toBe(7); // mardi 20/10
+    expect(r.values[6]).toBe(1); // dimanche 25/10
+    expect(r.peak).toBe(0);
+  });
+  it("pas de pic quand il n'y a aucune connexion", () => {
+    expect(dailyPeak([]).peak).toBeNull();
+    expect(weeklyPeak([{ date: 'invalide', profile: 'x', authentications: 3 }]).peak).toBeNull();
   });
 });

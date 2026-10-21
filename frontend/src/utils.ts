@@ -136,3 +136,28 @@ export function devicesTotals(rows: AccountRow[]): Array<{ device: string; total
   }
   return [...agg.entries()].map(([device, total]) => ({ device, total })).sort((a, b) => b.total - a.total);
 }
+
+/** Connexions cumulées par créneau (heure du jour ou jour de la semaine) et créneau le plus chargé. */
+export interface PeakResult {
+  values: number[];
+  /** Indice du créneau le plus chargé ; null quand il n'y a aucune connexion. */
+  peak: number | null;
+}
+
+function peakBy(rows: AccountRow[], slotOf: (d: Date) => number, size: number): PeakResult {
+  const values = new Array<number>(size).fill(0);
+  for (const r of rows) {
+    if (!r.date) continue;
+    const d = new Date(r.date);
+    if (Number.isNaN(d.getTime())) continue;
+    values[slotOf(d)] += r.authentications ?? 0;
+  }
+  const max = Math.max(...values);
+  return { values, peak: max > 0 ? values.indexOf(max) : null };
+}
+
+/** Pic horaire : connexions par heure du jour (0 → 23), tous profils et toutes dates confondus. Ex. pic à 8 h. */
+export const dailyPeak = (rows: AccountRow[]): PeakResult => peakBy(rows, (d) => d.getHours(), 24);
+
+/** Pic hebdomadaire : connexions par jour de la semaine (lundi = 0 → dimanche = 6). Ex. pic le mardi. */
+export const weeklyPeak = (rows: AccountRow[]): PeakResult => peakBy(rows, (d) => (d.getDay() + 6) % 7, 7);

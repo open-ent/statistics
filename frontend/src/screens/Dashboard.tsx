@@ -6,8 +6,9 @@ import { useSearchParams } from 'react-router-dom';
 
 import { api, exportUrl, ExportMode, Frequency, HttpError } from '../api';
 import { BarChart } from '../components/BarChart';
-import { dateLocale } from '../locale';
-import { accessByModule, accountsByProfile, formatInt, devicesTotals, kpis, profileLabel, rollingYearStart, splitAccess, timeSeries } from '../utils';
+import { SlotChart } from '../components/SlotChart';
+import { dateLocale, dayLabels } from '../locale';
+import { accessByModule, accountsByProfile, dailyPeak, weeklyPeak, formatInt, devicesTotals, kpis, profileLabel, rollingYearStart, splitAccess, timeSeries } from '../utils';
 
 /** Tableau de bord Statistiques : établissement + comptes par profil + accès par module. */
 export function Dashboard() {
@@ -33,6 +34,11 @@ export function Dashboard() {
 
   // Connexions par appareil : requête annexe, son échec masque seulement ce bloc.
   const devicesQuery = useQuery({ queryKey: ['stats', 'devices', structureId, from, frequency], queryFn: () => api.getAccountsByDevice(structureId, from, frequency), enabled: !!structureId, retry: false });
+  // Pics de connexion : requête annexe à l'heure près, son échec masque seulement ces deux blocs.
+  const hourlyQuery = useQuery({ queryKey: ['stats', 'hourly', structureId, from], queryFn: () => api.getAccountsHourly(structureId, from), enabled: !!structureId, retry: false });
+  const hourly = useMemo(() => dailyPeak(hourlyQuery.data ?? []), [hourlyQuery.data]);
+  const weekly = useMemo(() => weeklyPeak(hourlyQuery.data ?? []), [hourlyQuery.data]);
+  const hourLabels = useMemo(() => Array.from({ length: 24 }, (_, h) => `${String(h).padStart(2, '0')}h`), []);
   const devices = useMemo(() => devicesTotals(devicesQuery.data ?? []), [devicesQuery.data]);
   const maxDevice = devices[0]?.total ?? 0;
 
@@ -164,6 +170,21 @@ export function Dashboard() {
           <section className="card p-16 flex-grow-1" style={{ minWidth: 340 }} data-stats-series="visiteurs">
             <h2 style={{ fontSize: 18 }} className="mb-12">{t('stats.chart.visitors', { defaultValue: 'Visiteurs uniques par période' })}</h2>
             <BarChart points={visitorsSeries} color="#8e44ad" label={t('stats.chart.visitors', { defaultValue: 'Visiteurs uniques par période' })} />
+          </section>
+        </div>
+      )}
+
+      {hourly.peak !== null && (
+        <div className="d-flex gap-16 flex-wrap mb-16">
+          <section className="card p-16 flex-grow-1" style={{ minWidth: 340 }} data-stats-section="pic-horaire">
+            <h2 style={{ fontSize: 18 }} className="mb-4">{t('stats.chart.dailyPeak', { defaultValue: 'Pic de connexions dans la journée' })}</h2>
+            <p className="text-muted mb-12" data-peak-value>{t('stats.chart.peak.at', { defaultValue: 'Pic : [[slot]]', slot: hourLabels[hourly.peak] })}</p>
+            <SlotChart labels={hourLabels} values={hourly.values} peak={hourly.peak} label={t('stats.chart.dailyPeak', { defaultValue: 'Pic de connexions dans la journée' })} />
+          </section>
+          <section className="card p-16 flex-grow-1" style={{ minWidth: 340 }} data-stats-section="pic-hebdomadaire">
+            <h2 style={{ fontSize: 18 }} className="mb-4">{t('stats.chart.weeklyPeak', { defaultValue: 'Pic de connexions dans la semaine' })}</h2>
+            <p className="text-muted mb-12" data-peak-value>{t('stats.chart.peak.at', { defaultValue: 'Pic : [[slot]]', slot: weekly.peak !== null ? dayLabels()[weekly.peak] : '' })}</p>
+            <SlotChart labels={dayLabels()} values={weekly.values} peak={weekly.peak} label={t('stats.chart.weeklyPeak', { defaultValue: 'Pic de connexions dans la semaine' })} color="#8e44ad" />
           </section>
         </div>
       )}

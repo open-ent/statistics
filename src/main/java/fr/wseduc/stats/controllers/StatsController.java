@@ -86,13 +86,59 @@ public class StatsController extends MongoDbControllerHelper {
 	@Get("")
 	@SecuredAction(value = view)
 	public void view(HttpServerRequest request) {
+		withPreferredUi(request, "angular".equals(config.getString("frontend-ui", "react")) ? "angular" : "react", ui -> viewWith(request, ui));
+	}
+
+	/** Clé de préférence usager (« Paramètres du compte → Interfaces en cours de renouvellement ») portant le choix d'IHM. */
+	private static final String UI_PREFERENCE = "statsUi";
+
+	/**
+	 * IHM à servir, par ordre de priorité : la dérogation d'URL {@code ?ui=react|angular} (non mémorisée), la préférence
+	 * de l'usager (clé {@code statsUi}), puis celle de la plateforme. La préférence est lue à sa source, le nœud
+	 * {@code UserAppConf} du graphe ; aucune panne de cette lecture n'empêche le module de s'afficher.
+	 */
+	private void withPreferredUi(final HttpServerRequest request, final String platformUi, final io.vertx.core.Handler<String> handler) {
+		final String forced = request.getParam("ui");
+		if ("react".equals(forced) || "angular".equals(forced)) {
+			handler.handle(forced);
+			return;
+		}
+		org.entcore.common.user.UserUtils.getUserInfos(eb, request, user -> {
+			if (user == null) {
+				handler.handle(platformUi);
+				return;
+			}
+			final String query = "MATCH (:User {id:{userId}})-[:PREFERS]->(uac:UserAppConf) RETURN uac." + UI_PREFERENCE + " AS preference";
+			try {
+				org.entcore.common.neo4j.Neo4j.getInstance().execute(query, new JsonObject().put("userId", user.getUserId()),
+						message -> handler.handle(readUi(message.body(), platformUi)));
+			} catch (Exception e) {
+				// Graphe non initialisé pour ce module (`neo4j: false`) : la plateforme tranche, jamais d'erreur 500.
+				handler.handle(platformUi);
+			}
+		});
+	}
+
+	/** Extrait le choix d'IHM du résultat Neo4j — la préférence y est rangée en CHAÎNE JSON, ex. {"ui":"react"}. */
+	static String readUi(JsonObject body, String platformUi) {
+		try {
+			final io.vertx.core.json.JsonArray rows = body.getJsonArray("result", new io.vertx.core.json.JsonArray());
+			if (rows.isEmpty()) return platformUi;
+			final String raw = rows.getJsonObject(0).getString("preference");
+			if (raw == null || raw.trim().isEmpty()) return platformUi;
+			final String ui = new JsonObject(raw).getString("ui");
+			return ("react".equals(ui) || "angular".equals(ui)) ? ui : platformUi;
+		} catch (Exception e) {
+			// Préférence illisible ou graphe en échec : jamais d'erreur pour un choix d'habillage.
+			return platformUi;
+		}
+	}
+
+	private void viewWith(final HttpServerRequest request, final String ui) {
 		// CCTP 51C — React PAR DÉFAUT pour ce module : l'IHM AngularJS n'a jamais été
 		// gulp-buildée dans ce déploiement (view/stats.html absent → /stats en 500). Le
 		// fallback Java est donc "react" (la conf `frontend-ui` étant strippée par le
 		// springboard) ; repli AngularJS possible via `?ui=angular`.
-		final String uiParam = request.params().get("ui");
-		final String frontendUi = "angular".equals(config.getString("frontend-ui", "react")) ? "angular" : "react";
-		final String ui = ("react".equals(uiParam) || "angular".equals(uiParam)) ? uiParam : frontendUi;
 		if ("react".equals(ui)) {
 			renderView(request, new JsonObject(), "stats-react.html", null);
 		} else {

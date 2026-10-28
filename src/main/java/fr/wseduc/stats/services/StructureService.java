@@ -58,7 +58,7 @@ public class StructureService {
                 " WITH s, COLLECT(distinct {id: ps.id, name: ps.name}) as parents, COLLECT(distinct {id: c.id, name: c.name}) as classes" +
                 " WITH DISTINCT s, CASE WHEN any(p in parents where p <> {id: null, name: null}) THEN parents END as parents," +
                 " CASE WHEN any(c in classes where c <> {id: null, name: null}) THEN classes END as classes " +
-                " RETURN DISTINCT s.id as id, s.name as name, parents, classes, length(coalesce(parents,[])) > 0 as notroot " +
+                " RETURN DISTINCT s.id as id, s.name as name, parents, classes, size(coalesce(parents,[])) > 0 as notroot " +
                 " UNION " +
                 "MATCH (:User {id: $userId})-[rf:HAS_FUNCTION]->(f:Function)" +
                 " WHERE (f.externalId = \"ADMIN_LOCAL\" OR f.externalId = \"ADMIN_COLLECTIVITE\") AND rf.scope IS NOT NULL " +
@@ -107,7 +107,7 @@ public class StructureService {
 			"WITH p, collect(distinct u) as allUsers " +
 			"WITH p, [u IN allUsers WHERE u.activationCode IS NULL] as active, " +
 			"[u IN allUsers WHERE NOT(u.activationCode IS NULL)] as inactive " +
-			"WITH p, length (active) as active, length(inactive) as inactive " +
+			"WITH p, size(active) as active, size(inactive) as inactive " +
 			"RETURN collect({profile: p.name, active: active, inactive: inactive}) as metrics";
 
 	    JsonObject params = new JsonObject().put("structureId", structureId);

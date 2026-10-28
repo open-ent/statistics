@@ -43,7 +43,7 @@ public class StatsResourceProvider implements ResourcesProvider {
             return;
         } else if ("structure".equals(entityLevel)) {
             final String query =
-                    "MATCH (u:User {id: {userId}})-[:IN]->(pg)-[:DEPENDS]->(s:Structure {id: {entityId}}) " +
+                    "MATCH (u:User {id: $userId})-[:IN]->(pg)-[:DEPENDS]->(s:Structure {id: $entityId}) " +
                             "WHERE (pg:ProfileGroup OR pg:FunctionGroup) " +
                             "RETURN count(*) > 0 as exists ";
             JsonObject params = new JsonObject()
@@ -66,9 +66,9 @@ public class StatsResourceProvider implements ResourcesProvider {
         } else if ("class".equals(entityLevel)) {
             // check if user is ADML of the class structure OR if user is attached to class
             final String queryAdml =
-                    "MATCH (u:User {id: {userId}}) " +
-                            "WHERE (u)-[:IN]->(:FunctionGroup)-[:DEPENDS]->(:Structure)<-[:BELONGS]-(:Class {id: {classId}}) " +
-                            "OR (u)-[:IN]->(:ProfileGroup)-[:DEPENDS]->(:Class {id: {classId}}) " +
+                    "MATCH (u:User {id: $userId}) " +
+                            "WHERE (u)-[:IN]->(:FunctionGroup)-[:DEPENDS]->(:Structure)<-[:BELONGS]-(:Class {id: $classId}) " +
+                            "OR (u)-[:IN]->(:ProfileGroup)-[:DEPENDS]->(:Class {id: $classId}) " +
                             "RETURN count(*) > 0 as exists ";
             JsonObject params = new JsonObject()
                     .put("classId", entity)

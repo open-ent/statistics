@@ -31,3 +31,9 @@ gradle/wrapper
 .env
 dependency-reduced-pom.xml
 target
+# Sorties du build frontend, deposees a plat dans public/ : jamais versionnees.
+/src/main/resources/public/*
+!/src/main/resources/public/js
+!/src/main/resources/public/template
+!/src/main/resources/public/ts
+!/src/main/resources/public/ui-fab.js

@@ -134,7 +134,14 @@ export class DevicesIndicator extends AbstractLineIndicator {
 		Object.keys(dataGroupedByDevice).forEach(device => {
 			let total = 0;
 			total += dataGroupedByDevice[device].reduce((acc, value) => acc + value.value, 0);
-			devicesTotal.push({device, total});
+			// un type de support vide ou inconnu compte comme « autre » (sinon la clé de traduction « stats.device. » s'affiche)
+			const known = ['desktop', 'mobile_app', 'tablet', 'smartphone', 'other'].indexOf(device) >= 0 ? device : 'other';
+			const existing = devicesTotal.find(d => d.device === known);
+			if (existing) {
+				existing.total += total;
+			} else {
+				devicesTotal.push({device: known, total});
+			}
 		});
 		
 		let max = 0;

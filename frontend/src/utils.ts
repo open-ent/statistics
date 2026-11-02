@@ -161,3 +161,80 @@ export const dailyPeak = (rows: AccountRow[]): PeakResult => peakBy(rows, (d) =>
 
 /** Pic hebdomadaire : connexions par jour de la semaine (lundi = 0 → dimanche = 6). Ex. pic le mardi. */
 export const weeklyPeak = (rows: AccountRow[]): PeakResult => peakBy(rows, (d) => (d.getDay() + 6) % 7, 7);
+
+/** Couleurs des profils, reprises du graphique AngularJS (`dataset.service.ts`). */
+export const PROFILE_COLORS: Record<string, string> = {
+  Total: '#9aa0a6',
+  Teacher: '#6fbe2e',
+  Personnel: '#a348c0',
+  Relative: '#46afe6',
+  Student: '#ff8d2e',
+  Guest: '#ff3a55',
+};
+
+/** Ordre d'affichage des courbes : total d'abord, puis les profils comme dans l'AngularJS. */
+export const PROFILE_ORDER = ['Total', 'Teacher', 'Personnel', 'Relative', 'Student', 'Guest'];
+
+/** Une courbe : clé (profil, appareil…), libellé, couleur et une valeur par période. */
+export interface Series {
+  key: string;
+  values: number[];
+}
+
+export interface MultiSeries {
+  /** Périodes triées, telles que renvoyées par l'API. */
+  periods: string[];
+  series: Series[];
+}
+
+/**
+ * Courbes d'un champ numérique, une par valeur de `keyOf` (profil, appareil…), plus « Total » si `withTotal`.
+ * Les périodes sans donnée valent 0 (comme l'AngularJS, qui remplit les trous), pour que toutes les courbes
+ * aient la même longueur. Ex. Teacher 40 et Student 60 en « 2026-10 » → Total 100 ce mois-là.
+ */
+export function multiSeries<R extends { date: string }>(
+  rows: R[],
+  valueOf: (r: R) => number,
+  keyOf: (r: R) => string,
+  withTotal = true,
+): MultiSeries {
+  const periods = [...new Set(rows.filter((r) => r.date).map((r) => String(r.date)))].sort();
+  const index = new Map(periods.map((p, i) => [p, i]));
+  const byKey = new Map<string, number[]>();
+  for (const r of rows) {
+    if (!r.date) continue;
+    const k = keyOf(r);
+    const values = byKey.get(k) ?? new Array<number>(periods.length).fill(0);
+    values[index.get(String(r.date)) as number] += valueOf(r);
+    byKey.set(k, values);
+  }
+  const series: Series[] = [...byKey.entries()].map(([key, values]) => ({ key, values }));
+  if (withTotal) {
+    const total = new Array<number>(periods.length).fill(0);
+    series.forEach((s) => s.values.forEach((v, i) => (total[i] += v)));
+    series.unshift({ key: 'Total', values: total });
+  }
+  series.sort((a, b) => {
+    const ia = PROFILE_ORDER.indexOf(a.key);
+    const ib = PROFILE_ORDER.indexOf(b.key);
+    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+  });
+  return { periods, series };
+}
+
+/** Connexions par visiteur unique et par période et profil (0 sans visiteur). Ex. 40 connexions / 8 visiteurs = 5. */
+export function ratioSeries(rows: AccountRow[]): MultiSeries {
+  const auth = multiSeries(rows, (r) => r.authentications ?? 0, (r) => r.profile);
+  const vis = multiSeries(rows, (r) => r.unique_visitors ?? 0, (r) => r.profile);
+  const visByKey = new Map(vis.series.map((s) => [s.key, s.values]));
+  return {
+    periods: auth.periods,
+    series: auth.series.map((s) => ({
+      key: s.key,
+      values: s.values.map((v, i) => {
+        const d = visByKey.get(s.key)?.[i] ?? 0;
+        return d > 0 ? Math.round((v / d) * 10) / 10 : 0;
+      }),
+    })),
+  };
+}

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { AccessRow, AccountRow } from './api';
 import { exportUrl } from './api';
-import { dailyPeak, weeklyPeak, accessByModule, accountsByProfile, devicesTotals, splitAccess, periodLabel, seriesMax, timeSeries, formatInt, kpis, profileLabel, rollingYearStart, yearStart } from './utils';
+import { multiSeries, ratioSeries, dailyPeak, weeklyPeak, accessByModule, accountsByProfile, devicesTotals, splitAccess, periodLabel, seriesMax, timeSeries, formatInt, kpis, profileLabel, rollingYearStart, yearStart } from './utils';
 
 describe('accessByModule', () => {
   it('agrège par module et trie décroissant', () => {
@@ -170,5 +170,25 @@ describe('dailyPeak / weeklyPeak', () => {
   it("pas de pic quand il n'y a aucune connexion", () => {
     expect(dailyPeak([]).peak).toBeNull();
     expect(weeklyPeak([{ date: 'invalide', profile: 'x', authentications: 3 }]).peak).toBeNull();
+  });
+});
+
+describe('multiSeries / ratioSeries', () => {
+  const rows = [
+    { date: '2026-09', profile: 'Teacher', authentications: 40, unique_visitors: 8 },
+    { date: '2026-09', profile: 'Student', authentications: 60, unique_visitors: 20 },
+    { date: '2026-10', profile: 'Student', authentications: 10, unique_visitors: 5 },
+  ];
+  it('une courbe par profil, plus le total, avec 0 pour les périodes sans donnée', () => {
+    const m = multiSeries(rows, (r) => r.authentications, (r) => r.profile);
+    expect(m.periods).toEqual(['2026-09', '2026-10']);
+    expect(m.series.map((s) => s.key)).toEqual(['Total', 'Teacher', 'Student']);
+    expect(m.series[0].values).toEqual([100, 10]);
+    expect(m.series[1].values).toEqual([40, 0]);
+  });
+  it('connexions par visiteur unique, 0 sans visiteur', () => {
+    const r = ratioSeries(rows);
+    expect(r.series.find((s) => s.key === 'Teacher')?.values).toEqual([5, 0]);
+    expect(r.series.find((s) => s.key === 'Student')?.values).toEqual([3, 2]);
   });
 });

@@ -9,6 +9,6 @@
     "lib": ["es2017", "dom"]
   },
   "exclude": [
-    "build", "node_modules"
+    "build", "node_modules", "frontend"
   ]
 }

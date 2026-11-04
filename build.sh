@@ -119,14 +119,14 @@ buildNode () {
           if [ "$NO_DOCKER" = "true" ] ; then
             yarn install --no-bin-links && yarn upgrade entcore && node_modules/gulp/bin/gulp.js build
           else
-            docker compose run --rm -u "$USER_UID:$GROUP_GID" node sh -c "yarn install --no-bin-links --legacy-peer-deps --force && yarn upgrade entcore && node_modules/gulp/bin/gulp.js build"
+            docker compose run --rm -u "$USER_UID:$GROUP_GID" node sh -c "npm i -g -s yarn@1.22.19 && yarn install --no-bin-links --legacy-peer-deps --force && yarn upgrade entcore && node_modules/gulp/bin/gulp.js build"
           fi
           ;;
         *)
           if [ "$NO_DOCKER" = "true" ] ; then
             yarn install && yarn upgrade entcore && node_modules/gulp/bin/gulp.js build
           else
-            docker compose run --rm -u "$USER_UID:$GROUP_GID" node sh -c "yarn install --legacy-peer-deps --force && yarn upgrade entcore && node_modules/gulp/bin/gulp.js build"
+            docker compose run --rm -u "$USER_UID:$GROUP_GID" node sh -c "npm i -g -s yarn@1.22.19 && yarn install --legacy-peer-deps --force && yarn upgrade entcore && node_modules/gulp/bin/gulp.js build"
           fi
       esac
   else
@@ -136,14 +136,14 @@ buildNode () {
           if [ "$NO_DOCKER" = "true" ] ; then
             yarn install && yarn upgrade entcore && node_modules/gulp/bin/gulp.js build
           else
-            docker compose run --rm -u "$USER_UID:$GROUP_GID" node sh -c "yarn install --no-bin-links --legacy-peer-deps --force && npm rm --no-save entcore && yarn install --no-save entcore@dev && node_modules/gulp/bin/gulp.js build"
+            docker compose run --rm -u "$USER_UID:$GROUP_GID" node sh -c "npm i -g -s yarn@1.22.19 && yarn install --no-bin-links --legacy-peer-deps --force && npm rm --no-save entcore && yarn install --no-save entcore@dev && node_modules/gulp/bin/gulp.js build"
           fi
           ;;
         *)
           if [ "$NO_DOCKER" = "true" ] ; then
             yarn install --no-bin-links && yarn upgrade entcore && node_modules/gulp/bin/gulp.js build
           else
-            docker compose run --rm -u "$USER_UID:$GROUP_GID" node sh -c "yarn install --legacy-peer-deps --force && npm rm --no-save entcore && yarn install --no-save entcore@dev && node_modules/gulp/bin/gulp.js build"
+            docker compose run --rm -u "$USER_UID:$GROUP_GID" node sh -c "npm i -g -s yarn@1.22.19 && yarn install --legacy-peer-deps --force && npm rm --no-save entcore && yarn install --no-save entcore@dev && node_modules/gulp/bin/gulp.js build"
           fi
       esac
   fi

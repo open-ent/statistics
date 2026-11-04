@@ -40,20 +40,20 @@ jobs:
               ;;
           esac
 
-      # [A] IHM AngularJS historique (gulp, Node 10) — cf. build-and-publish.yml.
-      - name: Build frontend historique avec Node 10 via Docker
+      # [A] IHM AngularJS historique (gulp, Node 26) — cf. build-and-publish.yml.
+      - name: Build frontend historique avec Node 26 via Docker
         run: |
           docker run --rm \
             -v "${{ github.workspace }}:/workspace" \
             -w /workspace \
             --user root \
-            opendigitaleducation/node:10-alpine \
+            node:26-alpine \
             sh -c "npm install --legacy-peer-deps && node_modules/gulp/bin/gulp.js build"
 
-      # [B] IHM React (vue *-react.html) : sous-projet Vite frontend/ (Node 20).
+      # [B] IHM React (vue *-react.html) : sous-projet Vite frontend/ (Node 26).
       - uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          node-version: '26'
       - uses: pnpm/action-setup@v6
         with:
           version: 10
@@ -70,7 +70,7 @@ jobs:
 
       - uses: actions/setup-java@v6
         with:
-          java-version: '21'
+          java-version: '25'
           distribution: temurin
           cache: maven
 
@@ -136,6 +136,16 @@ jobs:
 
       - name: Build fat JAR
         run: mvn clean package -Dmaven.test.skip=true -B -DbuildNumber=${GITHUB_SHA::8} -DscmBranch=${GITHUB_REF_NAME}
+
+      # Depuis le JDK 23, javac n'exécute plus les processeurs d'annotations trouvés sur le
+      # classpath : sans `-proc:full` (pom), le jar part sans securedaction/ ni routes/, et
+      # chaque route sécurisée répond 404 — sans aucune erreur de build.
+      - name: Verify annotation metadata
+        run: |
+          FAT_JAR=$(ls target/*-fat.jar | head -1)
+          for d in securedaction routes; do
+            unzip -Z1 "$FAT_JAR" | grep -q "^$d/" || { echo "::error::$d/ absent de $FAT_JAR"; exit 1; }
+          done
 
       - name: Publish fat JAR to rct-nexus
         continue-on-error: true

@@ -1,10 +1,10 @@
 ﻿const gulp = require("gulp");
 const webpack = require("webpack-stream");
-const merge = require("merge2");
 const replace = require("gulp-replace");
 const clean = require("gulp-clean");
 const argv = require("yargs").argv;
 const fs = require("fs");
+const path = require("path");
 
 function dropCache() {
   return gulp
@@ -15,28 +15,24 @@ function dropCache() {
     .pipe(clean());
 }
 
-function buildDev() {
-  return gulp
-    .src("./src/main/resources/public")
-    .pipe(webpack(require("./webpack.config.js")))
-    .on("error", function handleError() {
-      this.emit("end"); // Recover from errors
-    })
-    .pipe(gulp.dest("./src/main/resources/public/dist"));
+// Appel direct du webpack embarqué par webpack-stream (webpack 1, celui qui a toujours produit
+// les bundles) : ses flux « through » ne se raccordent pas à ceux de gulp 5. Les erreurs de
+// typage restent signalées sans interrompre le build, comme avant.
+function buildDev(done) {
+  const config = require("./webpack.config.js");
+  config.output.path = path.resolve(__dirname, "./src/main/resources/public/dist");
+  webpack.webpack(config, (err, stats) => {
+    if (stats) console.log(stats.toString({ colors: false, chunks: false }));
+    done(err);
+  });
 }
 
-function build(done) {
-  const refs = gulp
+// Pas de behaviours.js dans ce module : seules les vues sont copiées.
+function build() {
+  return gulp
     .src("./src/main/resources/view-src/**/*.+(html|json|csv)")
     .pipe(replace("@@VERSION", Date.now()))
     .pipe(gulp.dest("./src/main/resources/view"));
-
-  /* const copyBehaviours = gulp
-    .src("./src/main/resources/public/dist/behaviours.js")
-    .pipe(gulp.dest("./src/main/resources/public/js")); */
-
-  merge[refs];
-  done();
 }
 
 gulp.task("drop-cache", dropCache);
@@ -71,7 +67,7 @@ function watchFiles() {
     gulp.watch(["./src/main/resources/public/js"], () => {
       console.log("Copying resources to " + springboard + "mods/" + modName);
       gulp
-        .src("./src/main/resources/**/*")
+        .src("./src/main/resources/**/*", { encoding: false })
         .pipe(gulp.dest(springboard + "mods/" + modName));
     });
     gulp.watch(
@@ -82,7 +78,7 @@ function watchFiles() {
       () => {
         console.log("Copying resources to " + springboard + "mods/" + modName);
         gulp
-          .src("./src/main/resources/**/*")
+          .src("./src/main/resources/**/*", { encoding: false })
           .pipe(gulp.dest(springboard + "mods/" + modName));
       }
     );
@@ -90,7 +86,7 @@ function watchFiles() {
     gulp.watch("./src/main/resources/view/**/*.html", () => {
       console.log("Copying resources to " + springboard + "mods/" + modName);
       gulp
-        .src("./src/main/resources/**/*")
+        .src("./src/main/resources/**/*", { encoding: false })
         .pipe(gulp.dest(springboard + "mods/" + modName));
     });
   });

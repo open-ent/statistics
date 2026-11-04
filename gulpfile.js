@@ -66,7 +66,7 @@ function watchFiles() {
     const modName = getModName(content);
     gulp.watch(["./src/main/resources/public/js"], () => {
       console.log("Copying resources to " + springboard + "mods/" + modName);
-      gulp
+      return gulp
         .src("./src/main/resources/**/*", { encoding: false })
         .pipe(gulp.dest(springboard + "mods/" + modName));
     });
@@ -77,7 +77,7 @@ function watchFiles() {
       ],
       () => {
         console.log("Copying resources to " + springboard + "mods/" + modName);
-        gulp
+        return gulp
           .src("./src/main/resources/**/*", { encoding: false })
           .pipe(gulp.dest(springboard + "mods/" + modName));
       }
@@ -85,7 +85,7 @@ function watchFiles() {
 
     gulp.watch("./src/main/resources/view/**/*.html", () => {
       console.log("Copying resources to " + springboard + "mods/" + modName);
-      gulp
+      return gulp
         .src("./src/main/resources/**/*", { encoding: false })
         .pipe(gulp.dest(springboard + "mods/" + modName));
     });

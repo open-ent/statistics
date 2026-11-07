@@ -26,7 +26,7 @@ jobs:
     name: Tag & Publish Dev Build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           fetch-depth: 0
 
@@ -51,10 +51,10 @@ jobs:
             sh -c "npm install --legacy-peer-deps && node_modules/gulp/bin/gulp.js build"
 
       # [B] IHM React (vue *-react.html) : sous-projet Vite frontend/ (Node 26).
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: '26'
-      - uses: pnpm/action-setup@v6
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6
         with:
           version: 10
       - name: Build frontend React (sous-projet Vite frontend/)

@@ -5,7 +5,7 @@
   "main": "gulpfile.js",
   "dependencies": {
     "@types/core-js": "0.9.42",
-    "axios": "0.16.2",
+    "axios": "0.35.0",
     "core-js": "2.4.1",
     "entcore": "4.8.20",
     "entcore-toolkit": "^1.0.1",
@@ -45,7 +45,8 @@
     "cipher-base": "^1.0.5",
     "elliptic": "^6.6.1",
     "loader-utils": "^1.4.2",
-    "minimist": "^1.2.8"
+    "minimist": "^1.2.8",
+    "axios": "0.35.0"
   },
   "overrides": {
     "handlebars": "^4.7.10",
@@ -54,6 +55,7 @@
     "cipher-base": "^1.0.5",
     "elliptic": "^6.6.1",
     "loader-utils": "^1.4.2",
-    "minimist": "^1.2.8"
+    "minimist": "^1.2.8",
+    "axios": "$axios"
   }
 }
